@@ -18,8 +18,7 @@ sgp_plus_toggle = st.sidebar.checkbox("Enable SGP+ (Multiple Games)")
 ml_toggle = st.sidebar.checkbox("Include Moneyline/Spread/O/U")
 
 # Game Selection
-selected_games = st.sidebar.multiselect("Select Games:", fetch_games())
-
+selected_games = st.sidebar.multiselect("Select Games:", fetch_games(), key="game_selection")
 # Prop Selection
 prop_count = st.sidebar.slider("Number of Props Per Game", 1, 8, 4)
 
