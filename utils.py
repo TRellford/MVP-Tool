@@ -5,12 +5,12 @@ from nba_api.stats.endpoints import scoreboardv2, commonplayerinfo
 from nba_api.stats.static import players
 
 ### ✅ FETCH NBA GAMES (Fixes Incorrect Team Names & Allows Today/Tomorrow Selection) ###
-def fetch_games():
+def fetch_games(date=None):  # Allow an optional argument
     try:
         response = ScoreboardV2().get_dict()
         games = response.get("gameHeader", [])
 
-        if not games:  # Check if games list is empty
+        if not games:
             return ["No Games Available"]
 
         game_list = [
@@ -22,6 +22,7 @@ def fetch_games():
     except Exception as e:
         print(f"Error fetching games: {e}")
         return ["Error fetching games"]
+        
 ### ✅ FETCH PLAYER DATA (Fixes "Player Not Found" Error) ###
 def fetch_player_data(player_name):
     """
