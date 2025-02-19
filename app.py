@@ -4,22 +4,23 @@ from utils import fetch_games, fetch_props, fetch_ml_spread_ou, fetch_player_dat
 # Title
 st.title("MVP Tool - NBA Betting Analysis")
 
-# Sidebar for game selection
-selected_games = st.sidebar.multiselect("Select Games:", fetch_games())
+# **Game Date Selection**
+game_date = st.sidebar.radio("Select Game Date:", ["Today", "Tomorrow"])
 
-# Toggle for ML/Spread/O/U predictions
+# **Fetch Games Based on Selected Date**
+selected_games = st.sidebar.multiselect("Select Games:", fetch_games(game_date))
+
+# **Toggles for ML/Spread/O/U & Player Props**
 toggle_ml_spread_ou = st.sidebar.checkbox("Include ML/Spread/O/U Predictions")
-
-# Toggle for Player Props
 toggle_player_props = st.sidebar.checkbox("Include Player Props")
 
-# Risk Level Selection
+# **Risk Level Selection**
 risk_level = st.sidebar.radio("Select Risk Level:", ["Very Safe", "Safe", "Moderate Risk", "High Risk", "Very High Risk"])
 
-# Number of Props Per Game
+# **Number of Props Per Game**
 num_props = st.sidebar.slider("Number of Props Per Game", 1, 8, 4)
 
-# SGP & SGP+ Toggle
+# **SGP & SGP+ Toggle**
 toggle_sgp = st.sidebar.checkbox("Same Game Parlay (SGP)")
 toggle_sgp_plus = st.sidebar.checkbox("Multi-Game SGP+ (Includes multiple games)")
 
