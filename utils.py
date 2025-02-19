@@ -18,23 +18,17 @@ def fetch_games(date_choice="Today"):
         selected_date = today_date if date_choice == "Today" else tomorrow_date
 
         # Fetch NBA games for the selected date
-        scoreboard = scoreboardv2.ScoreboardV2(dayOffset=0)
+        scoreboard = scoreboardv2.ScoreboardV2(game_date=today_date)
         games = scoreboard.get_dict()['resultSets'][0]['rowSet']
 
         game_list = []
         for game in games:
-            game_date = game[0]  # Extract game date
-            away_team = game[7]  # Away team abbreviation
             home_team = game[6]  # Home team abbreviation
+            away_team = game[7]  # Away team abbreviation
+            game_info = f"{away_team} vs {home_team}"
+            game_list.append(game_info)
 
-            if game_date == selected_date:
-                game_list.append(f"{away_team} vs {home_team}")
-
-        # If no games are found, return a clear message
-        return game_list if game_list else ["No Games Available for Selected Date"]
-
-    except Exception as e:
-        return [f"Error fetching games: {str(e)}"]
+    return game_list
 ### ✅ FETCH PLAYER DATA (Fixes "Player Not Found" Error) ###
 def fetch_player_data(player_name):
     """
