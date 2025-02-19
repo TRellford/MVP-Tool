@@ -50,15 +50,22 @@ def fetch_ml_spread_ou(selected_games, confidence):
         return ["Error fetching ML/Spread/O/U"]
 
 # Fetch Player Data (Search Feature)
+from nba_api.stats.endpoints import commonplayerinfo, playergamelogs
+
 def fetch_player_data(player_name):
     try:
+        # Get Player Info
         player_info = commonplayerinfo.CommonPlayerInfo(player_name).get_dict()
         stats = playergamelogs.PlayerGameLogs(player_name).get_dict()
 
+        # Extract Key Data
+        player_team = player_info.get("resultSets", [])[0].get("rowSet", [])[0][20]  # Team Name
+        last_5_games = stats.get("resultSets", [])[0].get("rowSet", [])[:5]  # Last 5 Games
+
         return {
-            "Team": player_info.get("teamFullName", "N/A"),
-            "Last 5 Games": stats.get("games", [])[:5],  # Display last 5 games
-            "Best Bets": ["Over 20.5 Points (-110)", "Over 7.5 Assists (-120)"]  # Simulated data
+            "Team": player_team,
+            "Last 5 Games": last_5_games,
+            "Best Bets": ["Over 20.5 Points (-110)", "Over 7.5 Assists (-120)"]  # Simulated for now
         }
 
     except Exception as e:
