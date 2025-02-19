@@ -19,7 +19,7 @@ if not games or "Error" in games[0] or "No Games Available" in games[0]:
     st.sidebar.warning(games[0])
     selected_games = []
 else:
-    selected_games = st.sidebar.multiselect("Select Games:", games)
+    selected_games = st.sidebar.multiselect("Select Games:", fetch_games())
 
 ### ✅ **SIDEBAR - PLAYER SEARCH**
 st.sidebar.title("Player Search")
