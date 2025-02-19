@@ -23,7 +23,18 @@ num_props = st.sidebar.slider("Number of Props Per Game", 1, 8, 4)
 toggle_sgp = st.sidebar.checkbox("Same Game Parlay (SGP)")
 toggle_sgp_plus = st.sidebar.checkbox("Multi-Game SGP+ (Includes multiple games)")
 
-# Run Predictions
+# **Player Search Feature**
+st.sidebar.subheader("🔍 Player Search")
+player_name = st.sidebar.text_input("Enter Player Name:")
+if player_name:
+    player_data = fetch_player_data(player_name)
+    if player_data:
+        st.write(f"### {player_name}'s Stats & Best Bets")
+        st.table(player_data)
+    else:
+        st.error("Player not found or no available data.")
+
+# **Game Predictions & Player Props**
 if st.button("Get Predictions"):
     if not selected_games:
         st.error("Please select at least one game.")
@@ -43,13 +54,3 @@ if st.button("Get Predictions"):
                 props = fetch_props(game, num_props, risk_level)
                 st.write(f"#### {game}")
                 st.table(props)
-
-# Player Search Feature
-player_name = st.text_input("Search Player Stats & Best Bets:")
-if player_name:
-    player_data = fetch_player_data(player_name)
-    if player_data:
-        st.write(f"### Stats & Best Bets for {player_name}")
-        st.write(player_data)
-    else:
-        st.error("Player not found or no available data.")
