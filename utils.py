@@ -12,28 +12,29 @@ def fetch_games(date_choice="Today"):
     :return: List of formatted games "AwayTeam vs HomeTeam"
     """
     try:
-        # Fetch NBA schedule
-        scoreboard = scoreboardv2.ScoreboardV2()
+        # Determine the correct date format
+        today_date = datetime.now().strftime("%Y-%m-%d")
+        tomorrow_date = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
+        selected_date = today_date if date_choice == "Today" else tomorrow_date
+
+        # Fetch NBA games for the selected date
+        scoreboard = scoreboardv2.ScoreboardV2(dayOffset=0)
         games = scoreboard.get_dict()['resultSets'][0]['rowSet']
 
         game_list = []
-        today_date = datetime.now().strftime("%Y-%m-%d")
-        tomorrow_date = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
-
         for game in games:
             game_date = game[0]  # Extract game date
             away_team = game[7]  # Away team abbreviation
             home_team = game[6]  # Home team abbreviation
 
-            if (date_choice == "Today" and game_date == today_date) or \
-               (date_choice == "Tomorrow" and game_date == tomorrow_date):
+            if game_date == selected_date:
                 game_list.append(f"{away_team} vs {home_team}")
 
-        return game_list if game_list else ["No Games Found"]
+        # If no games are found, return a clear message
+        return game_list if game_list else ["No Games Available for Selected Date"]
 
     except Exception as e:
         return [f"Error fetching games: {str(e)}"]
-
 ### ✅ FETCH PLAYER DATA (Fixes "Player Not Found" Error) ###
 def fetch_player_data(player_name):
     """
