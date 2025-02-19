@@ -1,37 +1,35 @@
 from nba_api.stats.endpoints import scoreboardv2, playergamelogs, commonplayerinfo
 import requests
-import datetime
+import datetime, timedelta
 
-# **Fetch Game List with Correct Team Names**
-def fetch_games(date=None):
+def fetch_games(date_choice="Today"):
     """
-    Fetches games for today or tomorrow based on user selection.
-    :param date: "Today" or "Tomorrow" (default: Today)
+    Fetches NBA games for today or tomorrow.
+    :param date_choice: "Today" or "Tomorrow"
     :return: List of games formatted as "AwayTeam vs HomeTeam"
     """
-    # Get live game data from NBA API
-    scoreboard = scoreboardv2.ScoreboardV2()
-    games = scoreboard.get_dict()['resultSets'][0]['rowSet']
+    try:
+        # Get NBA game data
+        scoreboard = scoreboardv2.ScoreboardV2()
+        games = scoreboard.get_dict()['resultSets'][0]['rowSet']
 
-    game_list = []
-    for game in games:
-        home_team = game[6]  # Home team abbreviation
-        away_team = game[7]  # Away team abbreviation
-        game_date = game[0]  # Game date
+        game_list = []
+        today_date = datetime.now().strftime("%Y-%m-%d")
+        tomorrow_date = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
 
-        # Convert date to match user selection
-        if date == "Tomorrow":
-            from datetime import datetime, timedelta
-            tomorrow_date = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
-            if game_date == tomorrow_date:
-                game_list.append(f"{away_team} vs {home_team}")
-        else:  # Default to today’s games
-            from datetime import datetime
-            today_date = datetime.now().strftime("%Y-%m-%d")
-            if game_date == today_date:
+        for game in games:
+            game_date = game[0]  # Extract the game date
+            away_team = game[7]  # Away team abbreviation
+            home_team = game[6]  # Home team abbreviation
+
+            if (date_choice == "Today" and game_date == today_date) or \
+               (date_choice == "Tomorrow" and game_date == tomorrow_date):
                 game_list.append(f"{away_team} vs {home_team}")
 
-    return game_list
+        return game_list if game_list else ["No Games Found"]
+    
+    except Exception as e:
+        return [f"Error fetching games: {str(e)}"]
 
 # **Fetch Player Props**
 def fetch_props(selected_games):
