@@ -1,19 +1,20 @@
 from nba_api.stats.endpoints import ScoreboardV2, commonplayerinfo, playergamelogs
 import requests
 
-# Fetch Games
 def fetch_games(date_choice):
     try:
         response = ScoreboardV2().get_dict()
         games = response.get("gameHeader", [])
-        
+
         if not games:
             return ["No Games Available"]
-        
-        game_list = [
-            f"{game['visitorTeam']['teamTricode']} vs {game['homeTeam']['teamTricode']}"
-            for game in games
-        ]
+
+        game_list = []
+        for game in games:
+            away_team = game.get("visitorTeam", {}).get("teamTricode", "N/A")
+            home_team = game.get("homeTeam", {}).get("teamTricode", "N/A")
+            game_list.append(f"{away_team} vs {home_team}")
+
         return game_list
 
     except Exception as e:
