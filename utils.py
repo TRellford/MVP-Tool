@@ -12,7 +12,7 @@ def fetch_games(day_offset=0):
     """
     target_date = (datetime.datetime.today() + datetime.timedelta(days=day_offset)).strftime("%Y-%m-%d")
 
-    scoreboard = ScoreboardV2(game_date=target_date)  # Ensure correct date format
+    scoreboard = Scoreboardv2(game_date=target_date)  # Ensure correct date format
     games = scoreboard.get_dict()["resultSets"][0]["rowSet"]
 
     game_list = []
