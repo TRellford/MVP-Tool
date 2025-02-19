@@ -1,46 +1,55 @@
 import streamlit as st
 from utils import fetch_games, fetch_props, fetch_ml_spread_ou, fetch_player_data
 
-st.set_page_config(page_title="MVP Tool", layout="wide")
+# Title
+st.title("MVP Tool - NBA Betting Analysis")
 
-# UI Layout
-st.title("MVP Sports Betting Tool 🚀")
-st.sidebar.header("Game Selection")
+# Sidebar for game selection
+selected_games = st.sidebar.multiselect("Select Games:", fetch_games())
 
-st.sidebar.title("Select Date")
-day_option = st.sidebar.radio("Choose Games For:", ["Today", "Tomorrow"])
-day_offset = 0 if day_option == "Today" else 1
+# Toggle for ML/Spread/O/U predictions
+toggle_ml_spread_ou = st.sidebar.checkbox("Include ML/Spread/O/U Predictions")
 
-selected_games = st.sidebar.multiselect("Select Games:", fetch_games(day_offset))
-# Toggle Features
-sgp_toggle = st.sidebar.checkbox("Enable Same Game Parlay (SGP)")
-sgp_plus_toggle = st.sidebar.checkbox("Enable SGP+ (Multiple Games)")
-ml_toggle = st.sidebar.checkbox("Include Moneyline/Spread/O/U")
-
-# Game Selection
-selected_games = st.sidebar.multiselect("Select Games:", fetch_games(), key="game_selection")
-# Prop Selection
-prop_count = st.sidebar.slider("Number of Props Per Game", 1, 8, 4)
+# Toggle for Player Props
+toggle_player_props = st.sidebar.checkbox("Include Player Props")
 
 # Risk Level Selection
-risk_level = st.sidebar.selectbox("Select Risk Level:", ["Very Safe", "Safe", "Moderate", "High Risk"])
+risk_level = st.sidebar.radio("Select Risk Level:", ["Very Safe", "Safe", "Moderate Risk", "High Risk", "Very High Risk"])
 
-# Fetch Predictions
-if st.sidebar.button("Get Predictions"):
-    if ml_toggle:
-        ml_results = fetch_ml_spread_ou(selected_games)
-        st.subheader("Moneyline, Spread & Over/Under Predictions")
-        st.table(ml_results)
+# Number of Props Per Game
+num_props = st.sidebar.slider("Number of Props Per Game", 1, 8, 4)
 
-    if selected_games:
-        props = fetch_props(selected_games, prop_count, risk_level, sgp_toggle, sgp_plus_toggle)
-        st.subheader("Top Player Props")
-        st.table(props)
+# SGP & SGP+ Toggle
+toggle_sgp = st.sidebar.checkbox("Same Game Parlay (SGP)")
+toggle_sgp_plus = st.sidebar.checkbox("Multi-Game SGP+ (Includes multiple games)")
 
-# Player Search
-st.sidebar.header("Player Search")
-player_name = st.sidebar.text_input("Enter Player Name")
-if st.sidebar.button("Search"):
-    player_info = fetch_player_data(player_name)
-    st.subheader(f"Player Analysis: {player_name}")
-    st.table(player_info)
+# Run Predictions
+if st.button("Get Predictions"):
+    if not selected_games:
+        st.error("Please select at least one game.")
+    else:
+        st.subheader("Game Predictions & Player Props")
+
+        # Moneyline, Spread, and O/U Predictions
+        if toggle_ml_spread_ou:
+            ml_spread_ou_results = fetch_ml_spread_ou(selected_games)
+            st.write("### Moneyline, Spread & O/U Predictions")
+            st.table(ml_spread_ou_results)
+
+        # Player Props
+        if toggle_player_props:
+            st.write("### Top Player Props")
+            for game in selected_games:
+                props = fetch_props(game, num_props, risk_level)
+                st.write(f"#### {game}")
+                st.table(props)
+
+# Player Search Feature
+player_name = st.text_input("Search Player Stats & Best Bets:")
+if player_name:
+    player_data = fetch_player_data(player_name)
+    if player_data:
+        st.write(f"### Stats & Best Bets for {player_name}")
+        st.write(player_data)
+    else:
+        st.error("Player not found or no available data.")
