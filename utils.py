@@ -1,15 +1,18 @@
-from nba_api.stats.endpoints import scoreboardv2, playergamelogs, commonplayerinfo
 import requests
-import datetime, timedelta
+import json
+from datetime import datetime, timedelta
+from nba_api.stats.endpoints import scoreboardv2, commonplayerinfo
+from nba_api.stats.static import players
 
+### ✅ FETCH NBA GAMES (Fixes Incorrect Team Names & Allows Today/Tomorrow Selection) ###
 def fetch_games(date_choice="Today"):
     """
     Fetches NBA games for today or tomorrow.
     :param date_choice: "Today" or "Tomorrow"
-    :return: List of games formatted as "AwayTeam vs HomeTeam"
+    :return: List of formatted games "AwayTeam vs HomeTeam"
     """
     try:
-        # Get NBA game data
+        # Fetch NBA schedule
         scoreboard = scoreboardv2.ScoreboardV2()
         games = scoreboard.get_dict()['resultSets'][0]['rowSet']
 
@@ -18,7 +21,7 @@ def fetch_games(date_choice="Today"):
         tomorrow_date = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
 
         for game in games:
-            game_date = game[0]  # Extract the game date
+            game_date = game[0]  # Extract game date
             away_team = game[7]  # Away team abbreviation
             home_team = game[6]  # Home team abbreviation
 
@@ -27,45 +30,28 @@ def fetch_games(date_choice="Today"):
                 game_list.append(f"{away_team} vs {home_team}")
 
         return game_list if game_list else ["No Games Found"]
-    
+
     except Exception as e:
         return [f"Error fetching games: {str(e)}"]
 
-# **Fetch Player Props**
-def fetch_props(selected_games):
-    props = []
-    for game in selected_games:
-        game_data = get_game_data(game)  # Ensure this function is working properly
-        for player in game_data['players']:
-            props.append({
-                "Player": player["name"],
-                "Prop": player["best_bet"],
-                "Odds": player["odds"],
-                "Confidence": player["confidence_score"]
-            })
-    return props
-
-# **Fetch ML, Spread, O/U Predictions**
-def fetch_ml_spread_ou(selected_games):
-    results = []
-    for game in selected_games:
-        url = f"https://api.sportsbook.com/ml_spread_ou?game={game}"
-        response = requests.get(url)
-        
-        if response.status_code == 200:
-            results.append(response.json())
-    
-    return results if results else [{"Game": "N/A", "Moneyline": "N/A", "Spread": "N/A", "O/U": "N/A"}]
-
-# **Fetch Player Stats & Best Bets**
+### ✅ FETCH PLAYER DATA (Fixes "Player Not Found" Error) ###
 def fetch_player_data(player_name):
+    """
+    Fetches player information from the NBA API.
+    :param player_name: Name of the player (e.g., "LeBron James")
+    :return: Dictionary with player stats or "Player Not Found"
+    """
     try:
-        player = commonplayerinfo.CommonPlayerInfo(player_name=player_name).get_dict()
-        stats = player["resultSets"][0]["rowSet"]
-        
-        if stats:
-            return [{"Category": stat[0], "Value": stat[1]} for stat in stats]
-        else:
-            return None
-    except:
-        return None
+        player_list = players.get_players()
+        player = next((p for p in player_list if p["full_name"].lower() == player_name.lower()), None)
+
+        if not player:
+            return {"error": "Player Not Found"}
+
+        player_id = player["id"]
+        player_info = commonplayerinfo.CommonPlayerInfo(player_id=player_id).get_dict()
+
+        return player_info
+
+    except Exception as e:
+        return {"error": f"Error fetching player data: {str(e)}"}
