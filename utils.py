@@ -3,32 +3,31 @@ import requests
 import datetime
 
 # **Fetch Game List with Correct Team Names**
-def fetch_games(date_selection):
-    # Determine the date
-    today = datetime.datetime.today().strftime('%Y-%m-%d')
-    tomorrow = (datetime.datetime.today() + datetime.timedelta(days=1)).strftime('%Y-%m-%d')
-    game_date = today if date_selection == "Today" else tomorrow
+def fetch_games():
+    scoreboard = scoreboardv2.ScoreboardV2()
+    games = scoreboard.get_dict()['resultSets'][0]['rowSet']
 
-    # Fetch games
-    games = scoreboardv2.ScoreboardV2(day_offset=0 if date_selection == "Today" else 1).get_dict()["resultSets"][0]["rowSet"]
-    
     game_list = []
     for game in games:
-        home_team = game[5]  # Home team abbreviation
-        away_team = game[6]  # Away team abbreviation
-        game_list.append(f"{away_team} vs {home_team}")
+        home_team = game[6]  # Home team abbreviation
+        away_team = game[7]  # Away team abbreviation
+        game_list.append(f"{away_team} vs {home_team}")  # Proper format
 
     return game_list
 
 # **Fetch Player Props**
-def fetch_props(game, num_props, risk_level):
-    url = f"https://api.sportsbook.com/props?game={game}&num_props={num_props}&risk={risk_level}"
-    response = requests.get(url)
-    
-    if response.status_code == 200:
-        return response.json()
-    else:
-        return [{"Player": "N/A", "Prop": "N/A", "Odds": "N/A", "Confidence": "N/A"}]
+def fetch_props(selected_games):
+    props = []
+    for game in selected_games:
+        game_data = get_game_data(game)  # Ensure this function is working properly
+        for player in game_data['players']:
+            props.append({
+                "Player": player["name"],
+                "Prop": player["best_bet"],
+                "Odds": player["odds"],
+                "Confidence": player["confidence_score"]
+            })
+    return props
 
 # **Fetch ML, Spread, O/U Predictions**
 def fetch_ml_spread_ou(selected_games):
