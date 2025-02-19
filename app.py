@@ -7,6 +7,11 @@ st.set_page_config(page_title="MVP Tool", layout="wide")
 st.title("MVP Sports Betting Tool 🚀")
 st.sidebar.header("Game Selection")
 
+st.sidebar.title("Select Date")
+day_option = st.sidebar.radio("Choose Games For:", ["Today", "Tomorrow"])
+day_offset = 0 if day_option == "Today" else 1
+
+selected_games = st.sidebar.multiselect("Select Games:", fetch_games(day_offset))
 # Toggle Features
 sgp_toggle = st.sidebar.checkbox("Enable Same Game Parlay (SGP)")
 sgp_plus_toggle = st.sidebar.checkbox("Enable SGP+ (Multiple Games)")
