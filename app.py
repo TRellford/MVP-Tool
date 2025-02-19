@@ -13,9 +13,10 @@ date_choice = st.sidebar.radio("Select Date", ["Today", "Tomorrow"])
 # Fetch available games for selected date
 games = fetch_games(date_choice)
 
-# Check if games were found before showing dropdown
-if "Error" in games[0] or "No Games Found" in games:
+# Ensure we handle errors and empty responses gracefully
+if not games or "Error" in games[0] or "No Games Available" in games[0]:
     st.sidebar.warning(games[0])
+    selected_games = []
 else:
     selected_games = st.sidebar.multiselect("Select Games:", games)
 
@@ -33,4 +34,4 @@ if player_name:
 ### ✅ **DISPLAY SELECTED GAMES**
 st.title("MVP Tool - NBA Betting Analysis")
 st.write("### Selected Games:")
-st.write(selected_games)
+st.write(selected_games if selected_games else "No Games Selected")
