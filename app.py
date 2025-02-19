@@ -11,8 +11,9 @@ st.sidebar.title("Game Selection")
 date_choice = st.sidebar.radio("Select Date", ["Today", "Tomorrow"])
 
 # Fetch available games for selected date
-games = fetch_games(date_choice)
-
+selected_day = st.sidebar.radio("Select Date", ["Today", "Tomorrow"])
+day_offset = 0 if selected_day == "Today" else 1  # Set dayOffset based on selection
+games = fetch_games(day_offset)  # Pass the correct day offset
 # Ensure we handle errors and empty responses gracefully
 if not games or "Error" in games[0] or "No Games Available" in games[0]:
     st.sidebar.warning(games[0])
