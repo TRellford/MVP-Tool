@@ -3,6 +3,9 @@ from bs4 import BeautifulSoup
 from nba_api.stats.endpoints import scoreboardv2, commonteamroster
 import datetime
 
+from nba_api.stats.endpoints import ScoreboardV2
+import datetime
+
 def fetch_games(day_offset=0):
     """
     Fetch NBA games for today or tomorrow using ScoreboardV2.
@@ -12,7 +15,7 @@ def fetch_games(day_offset=0):
     """
     target_date = (datetime.datetime.today() + datetime.timedelta(days=day_offset)).strftime("%Y-%m-%d")
 
-    scoreboard = scoreboardv2(game_date=target_date)  # Ensure correct date format
+    scoreboard = ScoreboardV2(game_date=target_date)  # Ensure correct date format
     games = scoreboard.get_dict()["resultSets"][0]["rowSet"]
 
     game_list = []
