@@ -5,12 +5,8 @@ from nba_api.stats.endpoints import scoreboardv2, commonplayerinfo
 from nba_api.stats.static import players
 
 ### ✅ FETCH NBA GAMES (Fixes Incorrect Team Names & Allows Today/Tomorrow Selection) ###
-def fetch_games(date_choice="Today"):
-    """
-    Fetches NBA games for today or tomorrow.
-    :param date_choice: "Today" or "Tomorrow"
-    :return: List of formatted games "AwayTeam vs HomeTeam"
-    """
+def fetch_games():
+    
     try:
         # Determine the correct date format
         today_date = datetime.now().strftime("%Y-%m-%d")
@@ -31,7 +27,7 @@ def fetch_games(date_choice="Today"):
         print(f"Error fetching games: {e}")
     game_list = []  # Return empty list if an error occurs
 
-return game_list
+    return game_list
 ### ✅ FETCH PLAYER DATA (Fixes "Player Not Found" Error) ###
 def fetch_player_data(player_name):
     """
