@@ -3,24 +3,26 @@ from bs4 import BeautifulSoup
 from nba_api.stats.endpoints import scoreboardv2, commonteamroster
 import datetime
 
-### **🔹 Fetch Live NBA Games & Matchups**
-def fetch_games():
+def fetch_games(day_offset=0):
     """
-    Fetch live NBA games for today using ScoreboardV2.
-    """
-    today = datetime.datetime.today().strftime("%Y-%m-%d")
-    scoreboard = scoreboardv2.ScoreboardV2(day_offset=0)  # Get today's games
-    games = scoreboard.get_dict()["resultSets"][0]["rowSet"]
+    Fetch NBA games for today or tomorrow using ScoreboardV2.
     
+    :param day_offset: 0 for today, 1 for tomorrow
+    :return: List of formatted game matchups
+    """
+    target_date = (datetime.datetime.today() + datetime.timedelta(days=day_offset)).strftime("%Y-%m-%d")
+    
+    scoreboard = scoreboardv2.ScoreboardV2(day_offset=day_offset)  
+    games = scoreboard.get_dict()["resultSets"][0]["rowSet"]
+
     game_list = []
     for game in games:
-        home_team = game[5]  # Home team abbreviation
-        away_team = game[7]  # Away team abbreviation
-        game_list.append(f"{away_team} vs {home_team}")
+        home_team = game[6]  # Correct index for home team abbreviation
+        away_team = game[7]  # Correct index for away team abbreviation
+        game_list.append(f"{away_team} vs {home_team}")  # Correct format
 
     return game_list
-
-
+    
 ### **🔹 Fetch Up-to-Date NBA Rosters**
 def fetch_rosters(team_id):
     """
