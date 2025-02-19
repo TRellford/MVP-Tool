@@ -1,4 +1,25 @@
-streamlit
-requests
+# Core Python Packages
+numpy
 pandas
+requests
+datetime
+flask
+streamlit
+
+# Web Scraping & API Requests
+beautifulsoup4
+selenium
 nba_api
+
+# Machine Learning & Data Processing
+scikit-learn
+xgboost
+scipy
+
+# Visualization
+matplotlib
+seaborn
+
+# JSON Handling & Async Processing
+json5
+aiohttp
