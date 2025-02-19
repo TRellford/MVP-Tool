@@ -6,10 +6,11 @@ import datetime
 ### **🔹 Fetch Live NBA Games & Matchups**
 def fetch_games():
     """
-    Gets live NBA games for today using NBA API.
+    Fetch live NBA games for today using ScoreboardV2.
     """
     today = datetime.datetime.today().strftime("%Y-%m-%d")
-    games = scoreboardv2.GameDate(today).get_dict()["resultSets"][0]["rowSet"]
+    scoreboard = scoreboardv2.ScoreboardV2(day_offset=0)  # Get today's games
+    games = scoreboard.get_dict()["resultSets"][0]["rowSet"]
     
     game_list = []
     for game in games:
