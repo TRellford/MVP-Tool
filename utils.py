@@ -27,8 +27,11 @@ def fetch_games(date_choice="Today"):
             away_team = game[7]  # Away team abbreviation
             game_info = f"{away_team} vs {home_team}"
             game_list.append(game_info)
+    except Exception as e:  # Catch errors properly
+    print(f"Error fetching games: {e}")
+    game_list = []  # Return empty list if an error occurs
 
-    return game_list
+return game_list
 ### ✅ FETCH PLAYER DATA (Fixes "Player Not Found" Error) ###
 def fetch_player_data(player_name):
     """
