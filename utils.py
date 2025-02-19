@@ -6,25 +6,16 @@ import datetime
 from nba_api.stats.endpoints import ScoreboardV2
 import datetime
 
-def fetch_games(day_offset=0):
-    """
-    Fetch NBA games for today or tomorrow using ScoreboardV2.
-
-    :param day_offset: 0 for today, 1 for tomorrow
-    :return: List of formatted game matchups
-    """
-    target_date = (datetime.datetime.today() + datetime.timedelta(days=day_offset)).strftime("%Y-%m-%d")
-
-    scoreboard = ScoreboardV2(game_date=target_date)  # Ensure correct date format
-    games = scoreboard.get_dict()["resultSets"][0]["rowSet"]
-
+def fetch_games():
+    games = scoreboardv2.ScoreboardV2().get_dict()["resultSets"][0]["rowSet"]
+    
     game_list = []
     for game in games:
-        home_team = game[4]  # Correct index for home team abbreviation
-        away_team = game[5]  # Correct index for away team abbreviation
+        home_team = game[6]  # Home team abbreviation (correct index)
+        away_team = game[7]  # Away team abbreviation (correct index)
         game_list.append(f"{away_team} vs {home_team}")  # Correct format
-
-    return game_list
+    
+    return game_list  # Now returns "CHA vs LAL" instead of "20250219/CHALAL"
     
 ### **🔹 Fetch Up-to-Date NBA Rosters**
 def fetch_rosters(team_id):
