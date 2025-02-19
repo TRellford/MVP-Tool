@@ -6,19 +6,19 @@ import datetime
 def fetch_games(day_offset=0):
     """
     Fetch NBA games for today or tomorrow using ScoreboardV2.
-    
+
     :param day_offset: 0 for today, 1 for tomorrow
     :return: List of formatted game matchups
     """
     target_date = (datetime.datetime.today() + datetime.timedelta(days=day_offset)).strftime("%Y-%m-%d")
-    
-    scoreboard = scoreboardv2.ScoreboardV2(day_offset=day_offset)  
+
+    scoreboard = ScoreboardV2(game_date=target_date)  # Ensure correct date format
     games = scoreboard.get_dict()["resultSets"][0]["rowSet"]
 
     game_list = []
     for game in games:
-        home_team = game[6]  # Correct index for home team abbreviation
-        away_team = game[7]  # Correct index for away team abbreviation
+        home_team = game[4]  # Correct index for home team abbreviation
+        away_team = game[5]  # Correct index for away team abbreviation
         game_list.append(f"{away_team} vs {home_team}")  # Correct format
 
     return game_list
