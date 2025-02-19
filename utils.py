@@ -1,9 +1,16 @@
 from nba_api.stats.endpoints import scoreboardv2, playergamelogs, commonplayerinfo
 import requests
+import datetime
 
-# **Fetch Game List with Proper Team Names**
-def fetch_games():
-    games = scoreboardv2.ScoreboardV2().get_dict()["resultSets"][0]["rowSet"]
+# **Fetch Game List with Correct Team Names**
+def fetch_games(date_selection):
+    # Determine the date
+    today = datetime.datetime.today().strftime('%Y-%m-%d')
+    tomorrow = (datetime.datetime.today() + datetime.timedelta(days=1)).strftime('%Y-%m-%d')
+    game_date = today if date_selection == "Today" else tomorrow
+
+    # Fetch games
+    games = scoreboardv2.ScoreboardV2(day_offset=0 if date_selection == "Today" else 1).get_dict()["resultSets"][0]["rowSet"]
     
     game_list = []
     for game in games:
