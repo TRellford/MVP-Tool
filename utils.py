@@ -5,15 +5,23 @@ from nba_api.stats.endpoints import scoreboardv2, commonplayerinfo
 from nba_api.stats.static import players
 
 ### ✅ FETCH NBA GAMES (Fixes Incorrect Team Names & Allows Today/Tomorrow Selection) ###
-def fetch_games(day_offset=0):  # Allow an optional argument
+def fetch_games():
     try:
-        scoreboard = ScoreboardV2(dayOffset=day_offset)  # Use the optional argument
-        games = scoreboard.get_dict()["resultSets"][0]["rowSet"]
-        game_list = [f"{game[6]} vs {game[7]}" for game in games]  # 6 & 7 are team abbreviations
+        response = ScoreboardV2().get_dict()
+        games = response.get("gameHeader", [])
+
+        if not games:  # Check if games list is empty
+            return ["No Games Available"]
+
+        game_list = [
+            f"{game['visitorTeam']['teamTricode']} vs {game['homeTeam']['teamTricode']}"
+            for game in games
+        ]
         return game_list
+
     except Exception as e:
         print(f"Error fetching games: {e}")
-        return []  # Return an empty list if an error occurs
+        return ["Error fetching games"]
 ### ✅ FETCH PLAYER DATA (Fixes "Player Not Found" Error) ###
 def fetch_player_data(player_name):
     """
