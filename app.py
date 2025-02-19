@@ -1,5 +1,5 @@
 import streamlit as st
-from utils import fetch_games, fetch_props, fetch_ml_spread_ou, fetch_player_data
+from src.utils import fetch_games, fetch_props, fetch_ml_spread_ou, fetch_player_data
 
 st.set_page_config(page_title="MVP Tool", layout="wide")
 
