@@ -1,76 +1,128 @@
 import requests
-from nba_api.stats.endpoints import commonplayerinfo, playergamelogs, scoreboard
-from nba_api.stats.static import players
+from bs4 import BeautifulSoup
+from nba_api.stats.endpoints import scoreboardv2, commonteamroster
 import datetime
 
-# ✅ Fetch Today's NBA Games
-def fetch_todays_games():
-    try:
-        today = datetime.datetime.today().strftime("%Y-%m-%d")
-        scoreboard_data = scoreboard.Scoreboard(day_offset=0).get_dict()
-        games = []
+def fetch_games(day_offset=0):
+    """
+    Fetch NBA games for today or tomorrow using ScoreboardV2.
 
-        for game in scoreboard_data["resultSets"][0]["rowSet"]:
-            home_team = game[6]
-            away_team = game[7]
-            games.append(f"{away_team} vs {home_team}")
+    :param day_offset: 0 for today, 1 for tomorrow
+    :return: List of formatted game matchups
+    """
+    target_date = (datetime.datetime.today() + datetime.timedelta(days=day_offset)).strftime("%Y-%m-%d")
 
-        return games
+    scoreboard = ScoreboardV2(game_date=target_date)  # Ensure correct date format
+    games = scoreboard.get_dict()["resultSets"][0]["rowSet"]
 
-    except Exception as e:
-        return {"error": f"Failed to fetch today's games: {str(e)}"}
+    game_list = []
+    for game in games:
+        home_team = game[4]  # Correct index for home team abbreviation
+        away_team = game[5]  # Correct index for away team abbreviation
+        game_list.append(f"{away_team} vs {home_team}")  # Correct format
 
-# ✅ Fetch Player Data (Live)
-def fetch_player_data(player_name):
-    try:
-        player_dict = players.get_players()
-        player = next((p for p in player_dict if p["full_name"].lower() == player_name.lower()), None)
+    return game_list
+    
+### **🔹 Fetch Up-to-Date NBA Rosters**
+def fetch_rosters(team_id):
+    """
+    Gets the latest roster for a given team.
+    """
+    roster_data = commonteamroster.CommonTeamRoster(team_id=team_id).get_dict()
+    players = roster_data["resultSets"][0]["rowSet"]
+    
+    return {player[3]: player[2] for player in players}  # Returns {Player Name: Position}
 
-        if not player:
-            return {"error": f"Player '{player_name}' not found."}
 
-        player_id = player["id"]
-        player_info = commonplayerinfo.CommonPlayerInfo(player_id=player_id).get_dict()
-        player_stats = playergamelogs.PlayerGameLogs(player_id_nullable=player_id, season_nullable="2023-24").get_dict()
+### **🔹 Scrape Live FanDuel Player Props**
+def fetch_props(game_url):
+    """
+    Scrapes FanDuel for real-time player props for a given NBA game.
+    """
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+    
+    response = requests.get(game_url, headers=headers)
+    if response.status_code != 200:
+        print(f"Error fetching data: {response.status_code}")
+        return []
 
-        profile = player_info["resultSets"][0]["rowSet"][0]
-        stats = player_stats["resultSets"][0]["rowSet"][:10] if player_stats["resultSets"][0]["rowSet"] else []
+    soup = BeautifulSoup(response.text, "html.parser")
+    
+    props = []
+    for prop_section in soup.find_all("div", class_="player-prop-class"):  
+        try:
+            player = prop_section.find("span", class_="player-name-class").text.strip()
+            stat = prop_section.find("span", class_="stat-category-class").text.strip()
+            line = prop_section.find("span", class_="prop-line-class").text.strip()
+            odds = prop_section.find("span", class_="odds-class").text.strip()
 
-        return {
-            "name": profile[3],
-            "team": profile[19],
-            "position": profile[14],
-            "height": profile[11],
-            "weight": profile[12],
-            "last_10_games": stats or "No games played this season"
-        }
+            props.append({
+                "player": player,
+                "prop": f"{stat} Over/Under {line}",
+                "odds": odds
+            })
+        except AttributeError:
+            continue  # Skips any missing data errors
 
-    except Exception as e:
-        return {"error": f"Failed to fetch data for {player_name}: {str(e)}"}
+    return props
 
-# ✅ Fetch Game Predictions (Live)
-def fetch_game_predictions(game):
-    try:
-        url = f"https://sportsdata.io/api/nba/predictions?game={game}"
-        response = requests.get(url)
-        return response.json()
-    except Exception as e:
-        return {"error": f"Failed to fetch game predictions: {str(e)}"}
 
-# ✅ Fetch Player Props (Live)
-def fetch_player_props(game, num_props=3, risk_level="Safe"):
-    try:
-        url = f"https://sportsdata.io/api/nba/props?game={game}&num_props={num_props}&risk={risk_level}"
-        response = requests.get(url)
-        return response.json()
-    except Exception as e:
-        return {"error": f"Failed to fetch player props: {str(e)}"}
+### **🔹 Fetch Moneyline, Spread, & Over/Under**
+def fetch_ml_spread_ou():
+    """
+    Gets the latest Moneyline, Spread, and O/U totals from sportsbooks.
+    """
+    # Example URL (Replace with an actual sportsbook odds provider)
+    url = "https://www.example.com/nba-odds"  
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
 
-# ✅ Fetch Best Betting Edges
-def fetch_betting_edges():
-    try:
-        url = "https://sportsdata.io/api/nba/betting-edges"
-        response = requests.get(url)
-        return response.json()
-    except Exception as e:
-        return {"error": f"Failed to fetch betting edges: {str(e)}"}
+    response = requests.get(url, headers=headers)
+    if response.status_code != 200:
+        print(f"Error fetching odds: {response.status_code}")
+        return {}
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    
+    odds_data = {}
+    for game_section in soup.find_all("div", class_="game-odds-class"):  
+        try:
+            teams = game_section.find("span", class_="team-names-class").text.strip()
+            ml = game_section.find("span", class_="moneyline-class").text.strip()
+            spread = game_section.find("span", class_="spread-class").text.strip()
+            total = game_section.find("span", class_="ou-class").text.strip()
+
+            odds_data[teams] = {"ML": ml, "Spread": spread, "Total": total}
+        except AttributeError:
+            continue
+
+    return odds_data
+
+
+### **🔹 Fetch Individual Player Data (Last 10 Games)**
+def fetch_player_data(player_id):
+    """
+    Gets the last 10 games of player data.
+    """
+    url = f"https://www.basketball-reference.com/players/{player_id[0]}/{player_id}.html"
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+
+    response = requests.get(url, headers=headers)
+    if response.status_code != 200:
+        print(f"Error fetching player data: {response.status_code}")
+        return {}
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    
+    stats = []
+    for row in soup.find_all("tr")[:10]:  # Only last 10 games
+        try:
+            date = row.find("td", {"data-stat": "date_game"}).text.strip()
+            points = row.find("td", {"data-stat": "pts"}).text.strip()
+            assists = row.find("td", {"data-stat": "ast"}).text.strip()
+            rebounds = row.find("td", {"data-stat": "trb"}).text.strip()
+
+            stats.append({"Date": date, "PTS": points, "AST": assists, "REB": rebounds})
+        except AttributeError:
+            continue
+
+    return stats
