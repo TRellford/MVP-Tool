@@ -58,27 +58,42 @@ def fetch_ml_spread_ou(selected_games):
 
 # ✅ Fetch Player Data for Search Feature
 def fetch_player_data(player_name):
+    """Fetch player profile & last 10 games data."""
     try:
+        # ✅ Get player ID
+        from nba_api.stats.static import players
         player_dict = players.get_players()
         player = next((p for p in player_dict if p["full_name"].lower() == player_name.lower()), None)
+        
         if not player:
             return {"error": f"Player '{player_name}' not found."}
 
         player_id = player["id"]
+
+        # ✅ Get player profile & stats
         player_info = commonplayerinfo.CommonPlayerInfo(player_id=player_id).get_dict()
         player_stats = playergamelogs.PlayerGameLogs(player_id_nullable=player_id, season_nullable="2023-24").get_dict()
 
+        # ✅ Extract profile data
         profile = player_info["resultSets"][0]["rowSet"][0]
-        stats = player_stats["resultSets"][0]["rowSet"]
 
-        return {
-            "name": profile[3],
-            "team": profile[19],
-            "position": profile[14],
-            "height": profile[11],
-            "weight": profile[12],
-            "last_10_games": stats[:10]
+        # ✅ Convert last 10 games into a readable format
+        stats_df = pd.DataFrame(player_stats["resultSets"][0]["rowSet"], 
+                                columns=player_stats["resultSets"][0]["headers"])
+
+        # ✅ Ensure all numeric data is converted to **strings** to prevent ArrowTypeError
+        stats_df = stats_df.applymap(lambda x: str(x) if isinstance(x, (int, float)) else x)
+
+        player_data = {
+            "name": profile[3],  # "LeBron James"
+            "team": profile[19],  # "Lakers"
+            "position": profile[14],  # "Forward"
+            "height": profile[11],  # "6-9"
+            "weight": profile[12],  # "250"
+            "last_10_games": stats_df.to_dict(orient="records")  # Ensure proper format
         }
+
+        return player_data
 
     except Exception as e:
         return {"error": f"Failed to fetch data for {player_name}: {str(e)}"}
