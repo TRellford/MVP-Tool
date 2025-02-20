@@ -3,6 +3,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 from nba_api.stats.endpoints import playergamelog, scoreboard
 import streamlit as st  # ✅ UI for game & player selection
+import requests  # ✅ For sportsbook API integration
 
 # ✅ 1️⃣ Fetch NBA Games (Today or Tomorrow)
 def fetch_games(day_offset=0, max_retries=3):
@@ -56,37 +57,52 @@ def get_recent_player_stats(player_id, opponent_abbreviation):
         return f"Failed to fetch recent stats for player ID {player_id}: {str(e)}"
 
 
-# ✅ 3️⃣ Fetch Real-Time Betting Odds (ML, Spread, Over/Under)
-def fetch_ml_spread_ou():
+# ✅ 3️⃣ Fetch Live Moneyline, Spread, and Over/Under Odds
+def fetch_ml_spread_ou(game_id):
     """
     Fetches real-time Moneyline, Spread, and Over/Under odds from sportsbooks.
     """
     try:
-        # 🔥 Replace this with real sportsbook API integration
-        betting_data = [
-            {"Game": "Lakers vs Warriors", "Moneyline": {"Lakers": "-130", "Warriors": "+110"},
-             "Spread": {"Lakers": "-3.5 (-110)", "Warriors": "+3.5 (-110)"},
-             "Over/Under": {"Over": "225.5 (-110)", "Under": "225.5 (-110)"}}
-        ]
-        return betting_data
+        url = f"https://api.sportsbook.com/v1/odds/nba/{game_id}"  # Replace with real sportsbook API
+        response = requests.get(url)
+        
+        # ✅ Check if request was successful
+        if response.status_code != 200:
+            return f"Error: Failed to fetch odds. Status Code: {response.status_code}"
+
+        data = response.json()
+
+        # ✅ Ensure the JSON response has expected fields
+        if "odds" not in data:
+            return f"Error: Unexpected JSON format - missing 'odds' key"
+
+        return data["odds"]
 
     except Exception as e:
         return f"Error fetching ML/Spread/O/U odds: {str(e)}"
 
 
-# ✅ 4️⃣ Fetch Real-Time Player Prop Bets
+# ✅ 4️⃣ Fetch Live Player Prop Bets
 def fetch_props(player_name):
     """
     Fetches available player props (points, assists, rebounds, etc.) from sportsbooks.
     """
     try:
-        # 🔥 Replace with real sportsbook API integration
-        player_props = {
-            "Points": "Over/Under 24.5 (-110)",
-            "Assists": "Over/Under 5.5 (-105)",
-            "Rebounds": "Over/Under 8.5 (-115)"
-        }
-        return player_props
+        url = f"https://api.sportsbook.com/v1/player-props/nba/{player_name}"  # Replace with real API
+        response = requests.get(url)
+
+        # ✅ Check if request was successful
+        if response.status_code != 200:
+            return f"Error: Failed to fetch props. Status Code: {response.status_code}"
+
+        data = response.json()
+
+        # ✅ Ensure the JSON response has expected fields
+        if "props" not in data:
+            return f"Error: Unexpected JSON format - missing 'props' key"
+
+        return data["props"]
+
     except Exception as e:
         return f"Error fetching props for {player_name}: {str(e)}"
 
@@ -113,13 +129,8 @@ def show_game_selection_ui():
 
         # Fetch betting odds for selected game
         st.subheader("Current Betting Lines (ML, Spread, O/U):")
-        odds = fetch_ml_spread_ou()
-        for game in odds:
-            if game["Game"] == selected_game:
-                st.write(f"📈 Moneyline: {game['Moneyline']}")
-                st.write(f"📊 Spread: {game['Spread']}")
-                st.write(f"📉 Over/Under: {game['Over/Under']}")
-                st.write("---")
+        odds = fetch_ml_spread_ou(game_options[selected_game])
+        st.write(odds)
 
     else:
         st.write("No games scheduled for this date.")
@@ -175,16 +186,13 @@ def show_player_search_ui():
         # Display player props
         st.subheader(f"Player Prop Bets for {player_name}")
         props = fetch_props(player_name)
-        for prop, line in props.items():
-            st.write(f"**{prop}:** {line}")
+        st.write(props)
 
 
-# ✅ Example Usage (Testing)
+# ✅ Run Streamlit UI
 if __name__ == "__main__":
     st.sidebar.title("NBA Betting Tool")
-
     page = st.sidebar.selectbox("Choose a Page:", ["Game Schedule", "Player Search"])
-
     if page == "Game Schedule":
         show_game_selection_ui()
     elif page == "Player Search":
