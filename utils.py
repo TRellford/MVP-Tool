@@ -168,9 +168,13 @@ def show_game_selection_ui():
     # **Radio Buttons for Today/Tomorrow Selection**
     selected_option = st.radio("Select Date:", ["Today's Games", "Tomorrow's Games"], index=0)
 
-    # **Fix: Use `asyncio.run()` to properly call async function**
-    games = asyncio.run(fetch_games(0)) if selected_option == "Today's Games" else asyncio.run(fetch_games(1))
+    # **Fix: Ensure `asyncio.run()` is properly used to execute async function**
+    if selected_option == "Today's Games":
+        games = asyncio.run(fetch_games(0))  # Runs fetch_games() synchronously
+    else:
+        games = asyncio.run(fetch_games(1))  # Runs fetch_games() synchronously
 
+    # **Check if games were retrieved**
     if games:
         game_options = {matchup: game_id for game_id, matchup in games}
         selected_game = st.selectbox("Choose a game:", list(game_options.keys()))
