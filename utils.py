@@ -24,12 +24,11 @@ chrome_options.add_argument("--disable-dev-shm-usage")
 async def fetch_games(day_offset=0):
     """
     Fetches NBA games for today (default) or tomorrow (if day_offset=1).
+    Returns a list of games formatted as "TEAM1 v TEAM2".
     """
     try:
         selected_date = (datetime.today() + timedelta(days=day_offset)).strftime('%Y-%m-%d')
-        url = f"https://www.nba.com/schedule?date={selected_date}"  # Update API if needed
-
-        print(f"Fetching games for: {selected_date}")
+        url = f"https://api.nba.com/schedule?date={selected_date}"  # Ensure this is the correct API
 
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as response:
@@ -38,12 +37,19 @@ async def fetch_games(day_offset=0):
                     return []
 
                 data = await response.json()
-                print("Raw API Response:", data)
 
-        if "games" not in data or not data["games"]:
+        if "games" not in data:
             return []
 
-        return [(game["gameId"], f"{game['visitor']} vs {game['home']}") for game in data["games"]]
+        # ✅ **Fix the issue where game names were showing incorrectly**
+        games_list = []
+        for game in data["games"]:
+            away_team = game["awayTeam"]["teamTricode"]  # Example: CHA
+            home_team = game["homeTeam"]["teamTricode"]  # Example: LAL
+            matchup = f"{away_team} v {home_team}"
+            games_list.append(matchup)
+
+        return games_list
 
     except Exception as e:
         print(f"Error fetching games: {str(e)}")
@@ -165,22 +171,19 @@ def show_game_selection_ui():
     """
     st.title("NBA Games Schedule")
 
-    # ✅ **Fix: Ensure radio buttons actually appear**
+    # ✅ **Ensure radio buttons appear**
     selected_option = st.radio("Select Date:", ["Today's Games", "Tomorrow's Games"], index=0)
 
-    # ✅ **Fix: Fetch games synchronously using `asyncio.run()`**
+    # ✅ **Ensure async function is executed properly**
     if selected_option == "Today's Games":
         games = asyncio.run(fetch_games(0))  # Fetch today's games
     else:
         games = asyncio.run(fetch_games(1))  # Fetch tomorrow's games
 
-    # ✅ **Fix: Ensure dropdown updates dynamically**
+    # ✅ **Ensure dropdown updates dynamically**
     if games:
-        game_options = {matchup: game_id for game_id, matchup in games}
-        selected_game = st.selectbox("Choose a game:", list(game_options.keys()))
-
+        selected_game = st.selectbox("Choose a game:", games)
         st.write(f"**You selected:** {selected_game}")
-
     else:
         st.write("No games scheduled for this date.")
 
