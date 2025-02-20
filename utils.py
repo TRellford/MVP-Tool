@@ -61,7 +61,28 @@ async def fetch_recent_player_stats(player_id, opponent_abbreviation=None):
     except Exception as e:
         return pd.DataFrame(), pd.DataFrame()
 
+def fetch_ml_spread_ou(game_id):
+    """
+    Scrapes sportsbook for Moneyline, Spread, and Over/Under odds for a given game.
+    """
+    try:
+        sportsbook_url = f"https://www.fanduel.com/sportsbook/nba/{game_id}"  # Update URL if needed
+        headers = {"User-Agent": "Mozilla/5.0"}
+        response = requests.get(sportsbook_url, headers=headers)
 
+        if response.status_code != 200:
+            return f"Error: Failed to fetch odds. Status Code: {response.status_code}"
+
+        # Parse JSON response (update based on sportsbook API structure)
+        data = response.json()
+        if "odds" not in data:
+            return f"Error: Unexpected JSON format - missing 'odds' key"
+
+        return data["odds"]
+
+    except Exception as e:
+        return f"Error fetching ML/Spread/O/U odds: {str(e)}"
+        
 # ✅ 3️⃣ Web Scraping: Fetch Live Moneyline, Spread, Over/Under Odds
 def scrape_sportsbook_odds():
     """
