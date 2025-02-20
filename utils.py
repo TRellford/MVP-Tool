@@ -9,10 +9,6 @@ from nba_api.stats.endpoints import leaguedashplayerstats
 from nba_api.stats.endpoints import ScoreboardV2
 from datetime import datetime, timedelta
 
-# ✅ Fetch NBA games for today or tomorrow (REAL DATA)
-from nba_api.stats.endpoints import scoreboardv2
-from datetime import datetime, timedelta
-
 # ✅ Fetch Games for Today & Tomorrow
 def fetch_games():
     try:
