@@ -10,6 +10,7 @@ from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from bs4 import BeautifulSoup
+import requests
 
 # ✅ Configure Selenium WebDriver for Scraping Sportsbook Odds
 chrome_options = Options()
@@ -99,7 +100,7 @@ def scrape_sportsbook_odds():
 
 
 # ✅ 4️⃣ Web Scraping: Fetch Player Props
-def scrape_player_props(player_name):
+def fetch_props(player_name):
     """
     Scrapes sportsbook for player prop bets.
     """
