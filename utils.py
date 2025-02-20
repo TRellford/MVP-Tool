@@ -1,30 +1,35 @@
 import requests
 from nba_api.stats.endpoints import scoreboardv2, commonplayerinfo, playergamelogs
 from nba_api.stats.static import players
-import datetime
+from datetime import datetime, timedelta
 
 # ✅ Fetch Today's NBA Games
 
-def fetch_games():
+def fetch_games(day_offset=0):
+    """
+    Fetches NBA games for today (default) or tomorrow (if day_offset=1).
+    """
     try:
-        today = datetime.today().strftime('%Y-%m-%d')
-        games_data = ScoreboardV2(day_offset=0).get_dict()
+        # Get the selected date
+        selected_date = (datetime.today() + timedelta(days=day_offset)).strftime('%Y-%m-%d')
 
-        if not games_data or "game_header" not in games_data:
+        # Fetch games with the appropriate day offset
+        games_data = ScoreboardV2(day_offset=day_offset).get_dict()
+
+        if not games_data or "gameHeader" not in games_data:
             return ["No games available or API issue. Try again later."]
 
         games_list = []
-        for game in games_data.get("game_header", []):  # Safe retrieval
+        for game in games_data["gameHeader"]:  # Ensuring correct key usage
             game_date = game.get("GAME_DATE_EST", "").split("T")[0]
-            if game_date == today:
+            if game_date == selected_date:
                 matchup = f"{game['VISITOR_TEAM_ABBREVIATION']} vs {game['HOME_TEAM_ABBREVIATION']}"
                 games_list.append(matchup)
 
-        return games_list if games_list else ["No Games Today"]
+        return games_list if games_list else ["No Games Scheduled"]
 
     except Exception as e:
         return [f"API Error: {str(e)}"]
-
 # ✅ Fetch Player Props for Selected Games
 def fetch_props(selected_games, prop_count, risk_level, sgp_enabled, sgp_plus_enabled):
     props = []
