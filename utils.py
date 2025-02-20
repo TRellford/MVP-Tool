@@ -65,27 +65,32 @@ def get_player_stats(player_name):
         return f"Failed to fetch data for {player_name}: {str(e)}"
 
 
-# 3️⃣ Helper Function to Display DataFrames (For Google Colab or UI Display)
-def display_player_stats(player_name):
+# 3️⃣ Fetch Moneyline (ML), Spread, and Over/Under (O/U) Odds
+def fetch_ml_spread_ou(game_id):
     """
-    Fetches and displays player stats in a structured format.
+    Fetches real-time Moneyline, Spread, and Over/Under odds for a given NBA game.
     """
-    player_stats = get_player_stats(player_name)
+    try:
+        # 🔥 Placeholder API Call (Replace with actual sportsbook API)
+        # Example of data structure returned by sportsbook API
+        betting_data = {
+            "Moneyline": {"Home": "-130", "Away": "+110"},
+            "Spread": {"Home": "-3.5 (-110)", "Away": "+3.5 (-110)"},
+            "Over/Under": {"Over": "225.5 (-110)", "Under": "225.5 (-110)"}
+        }
+        return betting_data
 
-    if isinstance(player_stats, pd.DataFrame):
-        import ace_tools as tools
-        tools.display_dataframe_to_user(name=f"{player_name} Stats", dataframe=player_stats)
-    else:
-        print(player_stats)  # Prints error messages
+    except Exception as e:
+        return f"Error fetching ML/Spread/O/U for Game ID {game_id}: {str(e)}"
 
 
-# 4️⃣ Fetch Player Props (Fixing the Missing Function)
+# 4️⃣ Fetch Player Props (Points, Assists, Rebounds, etc.)
 def fetch_props(player_name):
     """
     Fetches available player props (points, assists, rebounds, etc.) from sportsbooks.
     """
     try:
-        # Placeholder logic – Integrate with a sportsbook API for real-time props
+        # 🔥 Placeholder Data - Replace with a real sportsbook API
         player_props = {
             "Points": "Over/Under 24.5 (-110)",
             "Assists": "Over/Under 5.5 (-105)",
@@ -128,7 +133,14 @@ if __name__ == "__main__":
 
     # ✅ Test Player Search
     player_name = input("Enter the player's name: ")
-    display_player_stats(player_name)
+    print(get_player_stats(player_name))
+
+    # ✅ Fetch ML, Spread, O/U for a sample game
+    sample_game_id = "12345"  # Replace with an actual game ID
+    print(fetch_ml_spread_ou(sample_game_id))
+
+    # ✅ Fetch Player Props
+    print(fetch_props(player_name))
 
     # ✅ Run Streamlit UI for Game Selection
     show_game_selection_ui()
