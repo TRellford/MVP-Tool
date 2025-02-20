@@ -27,20 +27,29 @@ async def fetch_games(day_offset=0):
     """
     try:
         selected_date = (datetime.today() + timedelta(days=day_offset)).strftime('%Y-%m-%d')
-        url = f"https://www.nba.com/schedule?date={selected_date}"  # Update to actual API if available
+        url = f"https://www.nba.com/schedule?date={selected_date}"  # Replace with correct API if needed
+
+        print(f"Fetching games for: {selected_date}")
 
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as response:
                 if response.status != 200:
+                    print(f"API Error: {response.status}")
                     return []
-                data = await response.json()
 
-        if "games" not in data:
+                data = await response.json()
+                print("Raw API Response:", data)  # Debugging
+
+        if "games" not in data or not data["games"]:
+            print("No games found in API response")
             return []
 
-        return [(game["gameId"], f"{game['visitor']} vs {game['home']}") for game in data["games"]]
+        game_list = [(game["gameId"], f"{game['visitor']} vs {game['home']}") for game in data["games"]]
+        print("Games Retrieved:", game_list)  # Debugging
+        return game_list
 
     except Exception as e:
+        print(f"Error fetching games: {str(e)}")
         return []
 
 
