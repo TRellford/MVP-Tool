@@ -156,24 +156,17 @@ def show_game_selection_ui():
     """
     st.title("NBA Games Schedule")
 
+    # **Radio Buttons for Today/Tomorrow Selection**
     selected_option = st.radio("Select Date:", ["Today's Games", "Tomorrow's Games"], index=0)
 
-    # **Run async function synchronously**
-    if selected_option == "Today's Games":
-        games = asyncio.run(fetch_games(0))
-    else:
-        games = asyncio.run(fetch_games(1))
+    # **Fix: Use `asyncio.run()` to properly call async function**
+    games = asyncio.run(fetch_games(0)) if selected_option == "Today's Games" else asyncio.run(fetch_games(1))
 
-    # **Dropdown for selecting a game**
     if games:
         game_options = {matchup: game_id for game_id, matchup in games}
         selected_game = st.selectbox("Choose a game:", list(game_options.keys()))
 
         st.write(f"**You selected:** {selected_game}")
-
-        st.subheader("Live Sportsbook Odds")
-        odds = scrape_sportsbook_odds()
-        st.write(odds.get(selected_game, "No odds available"))
 
     else:
         st.write("No games scheduled for this date.")
