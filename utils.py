@@ -3,7 +3,7 @@ import streamlit as st
 from datetime import datetime, timedelta
 
 # ✅ Your API Key for The Odds API
-THE_ODDS_API_KEY = "your_api_key_here"
+THE_ODDS_API_KEY = "4c9fcd3030eac22e83179bf85a0cee0b"
 
 # ✅ Fetch NBA games from The Odds API
 def fetch_games(day_offset=0):
