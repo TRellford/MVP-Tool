@@ -8,11 +8,8 @@ from nba_api.stats.endpoints import leaguedashplayerstats
 # ✅ Fetch NBA games for today or tomorrow (REAL DATA)
 def fetch_games(date_choice="today"):
     try:
-        # Set date filter
         target_date = datetime.now().strftime("%Y-%m-%d") if date_choice == "today" else (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
-
-        # Fetch real NBA schedule from API
-        response = ScoreboardV2(day_offset=0).get_dict()
+        response = ScoreboardV2().get_dict()
         games = response.get("resultSets", [])[0].get("rowSet", [])
 
         if not games:
@@ -34,7 +31,6 @@ def fetch_games(date_choice="today"):
 # ✅ Fetch real player data (box scores, stats, trends)
 def fetch_player_data(player_name):
     try:
-        # Retrieve player info
         player_info = commonplayerinfo.CommonPlayerInfo(player_name=player_name).get_dict()
         player_stats = leaguedashplayerstats.LeagueDashPlayerStats(season="2023-24").get_dict()
 
@@ -44,3 +40,16 @@ def fetch_player_data(player_name):
         }
     except Exception as e:
         return {"error": f"Failed to fetch data for {player_name}: {e}"}
+
+# ✅ Fetch player prop odds from sportsbooks (FanDuel, DraftKings, BetMGM)
+def fetch_props(game):
+    try:
+        sportsbook_api_url = f"https://api.sportsbook.com/props?game={game}"
+        response = requests.get(sportsbook_api_url)
+        
+        if response.status_code == 200:
+            return response.json()
+        else:
+            return {"error": "Failed to fetch player props"}
+    except Exception as e:
+        return {"error": f"Error fetching player props: {e}"}
