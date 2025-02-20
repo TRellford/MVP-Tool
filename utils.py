@@ -53,3 +53,16 @@ def fetch_props(game):
             return {"error": "Failed to fetch player props"}
     except Exception as e:
         return {"error": f"Error fetching player props: {e}"}
+
+# ✅ Fetch Moneyline, Spread, and Over/Under odds from sportsbooks
+def fetch_ml_spread_ou(game):
+    try:
+        sportsbook_api_url = f"https://api.sportsbook.com/ml_spread_ou?game={game}"
+        response = requests.get(sportsbook_api_url)
+        
+        if response.status_code == 200:
+            return response.json()
+        else:
+            return {"error": "Failed to fetch ML, Spread, and O/U odds"}
+    except Exception as e:
+        return {"error": f"Error fetching ML, Spread, and O/U odds: {e}"}
