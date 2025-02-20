@@ -8,6 +8,7 @@ import streamlit as st  # ✅ UI for game & player selection
 def fetch_games(day_offset=0, max_retries=3):
     """
     Fetches NBA games for today (default) or tomorrow (if day_offset=1).
+    Returns a list of tuples with (game_id, matchup).
     """
     try:
         selected_date = (datetime.today() + timedelta(days=day_offset)).strftime('%Y-%m-%d')
@@ -23,14 +24,14 @@ def fetch_games(day_offset=0, max_retries=3):
                     return [f"API Error after {max_retries} retries: {str(e)}"]
 
         if "scoreboard" not in games_data or "games" not in games_data["scoreboard"]:
-            return ["No games available or API issue. Try again later."]
+            return []
 
         games_list = []
         for game in games_data["scoreboard"]["games"]:  
             matchup = f"{game['awayTeam']['teamName']} vs {game['homeTeam']['teamName']}"
-            games_list.append((matchup, game["gameId"]))  # Store game ID
+            games_list.append((game["gameId"], matchup))  # Store game ID & matchup
 
-        return games_list if games_list else ["No Games Scheduled"]
+        return games_list if games_list else []
 
     except Exception as e:
         return [f"API Error: {str(e)}"]
@@ -90,35 +91,41 @@ def fetch_props(player_name):
         return f"Error fetching props for {player_name}: {str(e)}"
 
 
-# ✅ 5️⃣ Streamlit UI for Today/Tomorrow Selection
+# ✅ 5️⃣ Streamlit UI for Game Selection (Dropdown + Radio Buttons)
 def show_game_selection_ui():
     """
     Displays a Streamlit UI for selecting today's or tomorrow's NBA games.
     """
     st.title("NBA Games Schedule")
 
+    # **Radio Buttons for Today/Tomorrow Selection**
     selected_option = st.radio("Select Date:", ["Today's Games", "Tomorrow's Games"])
 
-    if selected_option == "Today's Games":
-        games = fetch_games(0)
+    # **Fetch Games Based on Selection**
+    games = fetch_games(0) if selected_option == "Today's Games" else fetch_games(1)
+
+    # **Dropdown for Selecting a Game**
+    if games:
+        game_options = {matchup: game_id for game_id, matchup in games}
+        selected_game = st.selectbox("Choose a game:", list(game_options.keys()))
+
+        st.write(f"**You selected:** {selected_game}")
+
+        # Fetch betting odds for selected game
+        st.subheader("Current Betting Lines (ML, Spread, O/U):")
+        odds = fetch_ml_spread_ou()
+        for game in odds:
+            if game["Game"] == selected_game:
+                st.write(f"📈 Moneyline: {game['Moneyline']}")
+                st.write(f"📊 Spread: {game['Spread']}")
+                st.write(f"📉 Over/Under: {game['Over/Under']}")
+                st.write("---")
+
     else:
-        games = fetch_games(1)
-
-    st.subheader("Games:")
-    for game, game_id in games:
-        st.write(game)
-
-    st.subheader("Current Betting Lines (ML, Spread, O/U):")
-    odds = fetch_ml_spread_ou()
-    for game in odds:
-        st.write(f"**{game['Game']}**")
-        st.write(f"📈 Moneyline: {game['Moneyline']}")
-        st.write(f"📊 Spread: {game['Spread']}")
-        st.write(f"📉 Over/Under: {game['Over/Under']}")
-        st.write("---")
+        st.write("No games scheduled for this date.")
 
 
-# ✅ 6️⃣ Streamlit UI for Player Search (Now Uses Real-Time Data)
+# ✅ 6️⃣ Streamlit UI for Player Search (Last 10 Games + Previous Matchups)
 def show_player_search_ui():
     """
     Displays a Streamlit UI for searching NBA player stats and props.
@@ -140,7 +147,7 @@ def show_player_search_ui():
             player_id = player["id"]
 
             # Try to find the player's matchup from today's games
-            for game, game_id in today_games:
+            for game_id, game in today_games:
                 teams = game.split(" vs ")
                 if any(player_name.split()[-1] in team for team in teams):  # Check if player is on one of the teams
                     opponent_abbreviation = teams[1] if player_name.split()[-1] in teams[0] else teams[0]
@@ -167,7 +174,7 @@ def show_player_search_ui():
 
         # Display player props
         st.subheader(f"Player Prop Bets for {player_name}")
-        props = fetch_player_props(player_name)
+        props = fetch_props(player_name)
         for prop, line in props.items():
             st.write(f"**{prop}:** {line}")
 
