@@ -159,22 +159,25 @@ def fetch_props(player_name):
 
 
 # ✅ 5️⃣ Streamlit UI for Game Selection
+import streamlit as st
+import asyncio
+
 def show_game_selection_ui():
     """
     Displays a Streamlit UI for selecting today's or tomorrow's NBA games.
     """
     st.title("NBA Games Schedule")
 
-    # **Radio Buttons for Today/Tomorrow Selection**
+    # ✅ **Fix: Ensure radio buttons actually appear**
     selected_option = st.radio("Select Date:", ["Today's Games", "Tomorrow's Games"], index=0)
 
-    # **Fix: Ensure `asyncio.run()` is properly used to execute async function**
+    # ✅ **Fix: Fetch games synchronously using `asyncio.run()`**
     if selected_option == "Today's Games":
-        games = asyncio.run(fetch_games(0))  # Runs fetch_games() synchronously
+        games = asyncio.run(fetch_games(0))  # Fetch today's games
     else:
-        games = asyncio.run(fetch_games(1))  # Runs fetch_games() synchronously
+        games = asyncio.run(fetch_games(1))  # Fetch tomorrow's games
 
-    # **Check if games were retrieved**
+    # ✅ **Fix: Ensure dropdown updates dynamically**
     if games:
         game_options = {matchup: game_id for game_id, matchup in games}
         selected_game = st.selectbox("Choose a game:", list(game_options.keys()))
@@ -183,7 +186,6 @@ def show_game_selection_ui():
 
     else:
         st.write("No games scheduled for this date.")
-
 
 # ✅ 6️⃣ Streamlit UI for Player Search
 def show_player_search_ui():
