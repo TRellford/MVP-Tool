@@ -11,7 +11,6 @@ def fetch_games():
         games = [
             f"{game[5]} vs {game[4]}"  # Home vs Away Team
             for game in scoreboard["resultSets"][0]["rowSet"]
-            if game[3] == today
         ]
         return games
     except Exception as e:
