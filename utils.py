@@ -21,7 +21,7 @@ chrome_options.add_argument("--disable-dev-shm-usage")
 
 
 # ✅ 1️⃣ Async Fetch NBA Games (Today or Tomorrow)
-sync def fetch_games(day_offset=0):
+async def fetch_games(day_offset=0):
     """
     Fetches NBA games for today (default) or tomorrow (if day_offset=1).
     """
