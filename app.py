@@ -1,45 +1,69 @@
 import streamlit as st
-from utils import fetch_games, fetch_props, fetch_ml_spread_ou, fetch_player_data
+from utils import (
+    fetch_todays_games,
+    fetch_player_data,
+    fetch_game_predictions,
+    fetch_player_props,
+    fetch_betting_edges,
+)
 
-# Title
-st.title("🏀 Initial MVP Tool – NBA Betting Model")
+# Streamlit App Title
+st.title("MVP Tool - Live NBA Betting Analytics")
 
-# Sidebar - Select Games & Options
-st.sidebar.header("Game & Bet Selection")
-selected_date = st.sidebar.radio("Select Date:", ["Today", "Tomorrow"], index=0)
-selected_games = st.sidebar.multiselect("Select Games:", fetch_games(selected_date))
+# Sidebar for Navigation
+st.sidebar.title("Navigation")
+page = st.sidebar.radio("Go to:", ["Game Predictions", "Player Props", "Player Search", "Betting Edges"])
 
-# Toggle for Moneyline, Spread, Over/Under
-bet_type = st.sidebar.radio("Bet Type:", ["Props", "ML/Spread/O/U", "Both"], index=0)
+# ✅ Game Predictions Section
+if page == "Game Predictions":
+    st.header("🏀 Game Predictions")
+    st.write("Fetching real-time game predictions...")
 
-# Toggle for Same Game Parlay (SGP & SGP+)
-sgp_toggle = st.sidebar.toggle("Same Game Parlay (SGP)")
-sgp_plus_toggle = st.sidebar.toggle("SGP+ (Multiple Games)")
-
-# Confidence Score & Risk Level
-confidence_filter = st.sidebar.slider("Confidence Score Minimum:", 70, 100, 85)
-risk_level = st.sidebar.radio("Risk Level:", ["Very Safe (🔵)", "Safe (🟢)", "Moderate (🟡)", "High (🟠)", "Very High (🔴)"], index=1)
-
-# Fetch Predictions
-if st.sidebar.button("Get Predictions"):
-    if bet_type in ["Props", "Both"]:
-        st.subheader("🎯 Top Player Prop Predictions")
-        props = fetch_props(selected_games, confidence_filter, risk_level, sgp_toggle, sgp_plus_toggle)
-        st.write(props)
-
-    if bet_type in ["ML/Spread/O/U", "Both"]:
-        st.subheader("📊 ML, Spread, Over/Under Predictions")
-        ml_spread_ou = fetch_ml_spread_ou(selected_games, confidence_filter)
-        st.write(ml_spread_ou)
-
-# Player Search
-st.sidebar.header("🔎 Player Search")
-player_name = st.sidebar.text_input("Enter Player Name:")
-
-if st.sidebar.button("Search Player"):
-    player_data = fetch_player_data(player_name)
-    if player_data:
-        st.subheader(f"📊 Player Insights: {player_name}")
-        st.write(player_data)
+    games = fetch_todays_games()
+    if games:
+        selected_game = st.selectbox("Select a Game", games)
+        if st.button("Get Predictions"):
+            predictions = fetch_game_predictions(selected_game)
+            st.write(predictions)
     else:
-        st.error("Player not found or no available props.")
+        st.warning("No games available today.")
+
+# ✅ Player Props Section
+elif page == "Player Props":
+    st.header("📊 Player Props")
+    st.write("Select a game to view high-confidence player props.")
+
+    games = fetch_todays_games()
+    if games:
+        selected_game = st.selectbox("Select a Game", games)
+        num_props = st.slider("Number of Props", 1, 8, 3)
+        risk_level = st.selectbox("Select Risk Level", ["Very Safe", "Safe", "Moderate", "High Risk"])
+
+        if st.button("Get Props"):
+            props = fetch_player_props(selected_game, num_props, risk_level)
+            st.write(props)
+    else:
+        st.warning("No games available today.")
+
+# ✅ Player Search Section
+elif page == "Player Search":
+    st.header("🔎 Search for a Player")
+    player_name = st.text_input("Enter a player's name")
+
+    if st.button("Search"):
+        player_info = fetch_player_data(player_name)
+        if "error" in player_info:
+            st.error(player_info["error"])
+        else:
+            st.write(player_info)
+
+# ✅ Betting Edges Section
+elif page == "Betting Edges":
+    st.header("💰 Best Betting Edges")
+    st.write("Finding high-value bets with line discrepancies...")
+
+    if st.button("Get Betting Edges"):
+        betting_edges = fetch_betting_edges()
+        st.write(betting_edges)
+
+st.sidebar.text("MVP Tool - Live NBA Data")
