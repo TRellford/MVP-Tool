@@ -34,9 +34,32 @@ if st.sidebar.button("Get Predictions"):
         st.table(props)
 
 # Player Search
+# Ensure fetch_player_data is properly imported
+
 st.sidebar.header("Player Search")
 player_name = st.sidebar.text_input("Enter Player Name")
+
 if st.sidebar.button("Search"):
-    player_info = fetch_player_data(player_name)
-    st.subheader(f"Player Analysis: {player_name}")
-    st.table(player_info)
+    player_info = fetch_player_data(player_name)  # ✅ Fetch player data
+
+    if "error" in player_info:
+        st.error(player_info["error"])  # ✅ Display error message if player not found
+    else:
+        st.subheader(f"Player Analysis: {player_name}")
+
+        # ✅ Display Player Profile Info (excluding last_10_games)
+        profile_data = {k: v for k, v in player_info.items() if k != "last_10_games"}
+        st.table(pd.DataFrame([profile_data]))  # Convert single dictionary to DataFrame
+
+        # ✅ Display Last 10 Games Stats (Fixing Type Issues)
+        if "last_10_games" in player_info and isinstance(player_info["last_10_games"], list):
+            st.subheader(f"Last 10 Games Stats for {player_name}")
+
+            # 🔹 Fix Data Type Issue by Converting all to String
+            games_df = pd.DataFrame(player_info["last_10_games"])
+            games_df = games_df.astype(str)  # Convert all columns to string to avoid ArrowTypeError
+            st.table(games_df)
+    # ✅ Display Last 10 Games in a Separate Table
+    if "last_10_games" in player_info and isinstance(player_info["last_10_games"], list):
+        st.subheader(f"Last 10 Games Stats for {player_name}")
+        st.table(pd.DataFrame(player_info["last_10_games"]))  # ✅ Convert list of dicts to DataFrame
