@@ -2,7 +2,8 @@ import time
 import pandas as pd
 from datetime import datetime, timedelta
 from nba_api.stats.static import players
-from nba_api.stats.endpoints import playercareerstats, leaguegamefinder, scoreboard
+from nba_api.stats.endpoints import playercareerstats, scoreboard
+import streamlit as st  # ✅ UI Support for Today/Tomorrow Selection
 
 # 1️⃣ Fetch NBA Games (Today or Tomorrow)
 def fetch_games(day_offset=0, max_retries=3):
@@ -14,7 +15,6 @@ def fetch_games(day_offset=0, max_retries=3):
 
         for attempt in range(max_retries):
             try:
-                # Using Scoreboard instead of ScoreboardV2 to avoid redirect errors
                 games_data = scoreboard.Scoreboard(game_date=selected_date).get_dict()
                 break  # Exit loop if request is successful
             except Exception as e:
@@ -79,12 +79,56 @@ def display_player_stats(player_name):
         print(player_stats)  # Prints error messages
 
 
+# 4️⃣ Fetch Player Props (Fixing the Missing Function)
+def fetch_props(player_name):
+    """
+    Fetches available player props (points, assists, rebounds, etc.) from sportsbooks.
+    """
+    try:
+        # Placeholder logic – Integrate with a sportsbook API for real-time props
+        player_props = {
+            "Points": "Over/Under 24.5 (-110)",
+            "Assists": "Over/Under 5.5 (-105)",
+            "Rebounds": "Over/Under 8.5 (-115)"
+        }
+        return player_props
+    except Exception as e:
+        return f"Error fetching props for {player_name}: {str(e)}"
+
+
+# 5️⃣ Streamlit UI for Today/Tomorrow Selection
+def show_game_selection_ui():
+    """
+    Displays a Streamlit UI for selecting today's or tomorrow's NBA games.
+    """
+    st.title("NBA Games Schedule")
+
+    # **Create Radio Buttons for Game Selection**
+    selected_option = st.radio("Select Date:", ["Today's Games", "Tomorrow's Games"])
+
+    # **Fetch Games Based on User Selection**
+    if selected_option == "Today's Games":
+        games = fetch_games(0)
+    else:
+        games = fetch_games(1)
+
+    # **Display Games in Streamlit**
+    if isinstance(games, list):
+        for game in games:
+            st.write(game)
+    else:
+        st.write("No games found.")
+
+
 # Example Usage (Testing)
 if __name__ == "__main__":
-    # Test Game Fetching
+    # ✅ Test Game Fetching
     print("Today's Games:", fetch_games(0))
     print("Tomorrow's Games:", fetch_games(1))
 
-    # Test Player Search
-    player_name = input("Enter the player's name: ")  # User inputs any player
+    # ✅ Test Player Search
+    player_name = input("Enter the player's name: ")
     display_player_stats(player_name)
+
+    # ✅ Run Streamlit UI for Game Selection
+    show_game_selection_ui()
