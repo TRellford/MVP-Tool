@@ -4,7 +4,7 @@ import asyncio
 import aiohttp
 import pandas as pd
 from datetime import datetime, timedelta
-from nba_api.stats.endpoints import playergamelog, scoreboard
+from nba_api.stats.endpoints import playergamelog
 import streamlit as st
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -31,16 +31,16 @@ async def fetch_games(day_offset=0):
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as response:
                 if response.status != 200:
-                    return f"API Error: {response.status}"
+                    return []
                 data = await response.json()
 
         if "games" not in data:
-            return ["No games available or API issue."]
+            return []
 
         return [(game["gameId"], f"{game['visitor']} vs {game['home']}") for game in data["games"]]
 
     except Exception as e:
-        return [f"API Error: {str(e)}"]
+        return []
 
 
 # ✅ 2️⃣ Async Fetch Last 10 Games + Opponent Matchups
@@ -58,7 +58,7 @@ async def fetch_recent_player_stats(player_id, opponent_abbreviation=None):
         return last_10_games, prev_matchups
 
     except Exception as e:
-        return f"Error fetching recent stats: {str(e)}"
+        return pd.DataFrame(), pd.DataFrame()
 
 
 # ✅ 3️⃣ Web Scraping: Fetch Live Moneyline, Spread, Over/Under Odds
@@ -95,11 +95,11 @@ def scrape_sportsbook_odds():
         return odds_data
 
     except Exception as e:
-        return f"Error scraping sportsbook odds: {str(e)}"
+        return {}
 
 
 # ✅ 4️⃣ Web Scraping: Fetch Player Props
-def fetch_props(player_name):
+def scrape_player_props(player_name):
     """
     Scrapes sportsbook for player prop bets.
     """
@@ -124,7 +124,7 @@ def fetch_props(player_name):
         return props_data
 
     except Exception as e:
-        return f"Error scraping player props: {str(e)}"
+        return {}
 
 
 # ✅ 5️⃣ Streamlit UI for Game Selection
@@ -134,10 +134,15 @@ def show_game_selection_ui():
     """
     st.title("NBA Games Schedule")
 
-    selected_option = st.radio("Select Date:", ["Today's Games", "Tomorrow's Games"])
+    selected_option = st.radio("Select Date:", ["Today's Games", "Tomorrow's Games"], index=0)
 
-    games = asyncio.run(fetch_games(0)) if selected_option == "Today's Games" else asyncio.run(fetch_games(1))
+    # **Run async function synchronously**
+    if selected_option == "Today's Games":
+        games = asyncio.run(fetch_games(0))
+    else:
+        games = asyncio.run(fetch_games(1))
 
+    # **Dropdown for selecting a game**
     if games:
         game_options = {matchup: game_id for game_id, matchup in games}
         selected_game = st.selectbox("Choose a game:", list(game_options.keys()))
@@ -163,11 +168,14 @@ def show_player_search_ui():
     if player_name:
         st.subheader("Last 10 Games")
         stats, prev_matchups = asyncio.run(fetch_recent_player_stats(1234, "LAL"))  # Replace with actual player ID
-        st.dataframe(stats)
+        if not stats.empty:
+            st.dataframe(stats)
+        else:
+            st.write("No game data available.")
 
         st.subheader("Player Prop Bets")
         props = scrape_player_props(player_name)
-        st.write(props)
+        st.write(props if props else "No props found.")
 
 
 # ✅ Run Streamlit UI
@@ -178,4 +186,3 @@ if __name__ == "__main__":
         show_game_selection_ui()
     elif page == "Player Search":
         show_player_search_ui()
-    
