@@ -21,13 +21,13 @@ chrome_options.add_argument("--disable-dev-shm-usage")
 
 
 # ✅ 1️⃣ Async Fetch NBA Games (Today or Tomorrow)
-async def fetch_games(day_offset=0):
+sync def fetch_games(day_offset=0):
     """
     Fetches NBA games for today (default) or tomorrow (if day_offset=1).
     """
     try:
         selected_date = (datetime.today() + timedelta(days=day_offset)).strftime('%Y-%m-%d')
-        url = f"https://www.nba.com/schedule?date={selected_date}"  # Replace with correct API if needed
+        url = f"https://www.nba.com/schedule?date={selected_date}"  # Update API if needed
 
         print(f"Fetching games for: {selected_date}")
 
@@ -38,15 +38,12 @@ async def fetch_games(day_offset=0):
                     return []
 
                 data = await response.json()
-                print("Raw API Response:", data)  # Debugging
+                print("Raw API Response:", data)
 
         if "games" not in data or not data["games"]:
-            print("No games found in API response")
             return []
 
-        game_list = [(game["gameId"], f"{game['visitor']} vs {game['home']}") for game in data["games"]]
-        print("Games Retrieved:", game_list)  # Debugging
-        return game_list
+        return [(game["gameId"], f"{game['visitor']} vs {game['home']}") for game in data["games"]]
 
     except Exception as e:
         print(f"Error fetching games: {str(e)}")
