@@ -3,13 +3,16 @@ import streamlit as st
 from datetime import datetime, timedelta
 
 # ✅ Your API Key for The Odds API
-THE_ODDS_API_KEY = "4c9fcd3030eac22e83179bf85a0cee0b"
+THE_ODDS_API_KEY = "your_api_key_here"
 
-# ✅ Fetch NBA games from The Odds API
+# ✅ Fetch NBA games from The Odds API with correct date filtering
 def fetch_games(day_offset=0):
     try:
+        # Get the correct date
         selected_date = (datetime.today() + timedelta(days=day_offset)).strftime('%Y-%m-%d')
-        url = f"https://api.the-odds-api.com/v4/sports/basketball_nba/events?apiKey={THE_ODDS_API_KEY}&date={selected_date}"
+
+        # API URL (Ensure it's filtering by date)
+        url = f"https://api.the-odds-api.com/v4/sports/basketball_nba/events?apiKey={THE_ODDS_API_KEY}"
 
         response = requests.get(url)
 
@@ -27,17 +30,18 @@ def fetch_games(day_offset=0):
 
         games_list = []
         for game in data:
-            away_team = game.get("away_team", "Unknown")
-            home_team = game.get("home_team", "Unknown")
-            matchup = f"{away_team} v {home_team}"
-            games_list.append(matchup)
+            game_date = game.get("commence_time", "").split("T")[0]  # Extract the date
+            if game_date == selected_date:  # ✅ Only include games matching the selected date
+                away_team = game.get("away_team", "Unknown")
+                home_team = game.get("home_team", "Unknown")
+                matchup = f"{away_team} v {home_team}"
+                games_list.append(matchup)
 
         return games_list
 
     except Exception as e:
         st.error(f"Error fetching games: {str(e)}")
         return []
-
 # ✅ Fetch sportsbook odds from The Odds API
 def fetch_sportsbook_odds(game):
     try:
