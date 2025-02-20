@@ -1,24 +1,23 @@
-sync def fetch_games(day_offset=0):
-    """
-    Fetches NBA games for today (default) or tomorrow (if day_offset=1).
-    Returns a list of games formatted as "TEAM1 v TEAM2".
-    """
+import requests
+import streamlit as st
+from datetime import datetime, timedelta
+
+# ✅ Fetch NBA games for today or tomorrow
+def fetch_games(day_offset=0):
     try:
         selected_date = (datetime.today() + timedelta(days=day_offset)).strftime('%Y-%m-%d')
-        url = f"https://api.nba.com/schedule?date={selected_date}"  # Ensure correct API
+        url = f"https://api.nba.com/schedule?date={selected_date}"  # Replace with the correct API endpoint
 
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url) as response:
-                if response.status != 200:
-                    print(f"API Error: {response.status}")
-                    return []
+        response = requests.get(url)
+        if response.status_code != 200:
+            st.error(f"API Error: {response.status}")
+            return []
 
-                data = await response.json()
+        data = response.json()
 
         if "games" not in data or not data["games"]:
             return []
 
-        # ✅ Fix incorrect team names
         games_list = []
         for game in data["games"]:
             away_team = game["awayTeam"]["teamTricode"]  # Example: CHA
@@ -29,5 +28,45 @@ sync def fetch_games(day_offset=0):
         return games_list
 
     except Exception as e:
-        print(f"Error fetching games: {str(e)}")
+        st.error(f"Error fetching games: {str(e)}")
         return []
+
+# ✅ Fetch sportsbook odds (ML, Spread, O/U)
+def fetch_sportsbook_odds(game):
+    try:
+        url = f"https://api.sportsbook.com/odds?game={game}"  # Replace with actual sportsbook API
+        response = requests.get(url)
+        if response.status_code != 200:
+            return {}
+
+        data = response.json()
+        return data
+
+    except Exception as e:
+        return {"error": str(e)}
+
+# ✅ Fetch player props (Live odds only)
+def fetch_player_props(game):
+    try:
+        url = f"https://api.sportsbook.com/player-props?game={game}"  # Replace with actual sportsbook API
+        response = requests.get(url)
+        if response.status_code != 200:
+            return {}
+
+        return response.json()
+
+    except Exception as e:
+        return {"error": str(e)}
+
+# ✅ Fetch real-time injury updates
+def fetch_injury_updates():
+    try:
+        url = "https://api.nba.com/injuries"  # Replace with correct API
+        response = requests.get(url)
+        if response.status_code != 200:
+            return {}
+
+        return response.json()
+
+    except Exception as e:
+        return {"error": str(e)}
