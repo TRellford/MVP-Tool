@@ -46,7 +46,42 @@ def fetch_games():
         return ["Error fetching games"]
 
 # ✅ Fetch real player data (box scores, stats, trends)
+def fetch_player_data(player_name):
+    try:
+        # ✅ Find player ID using NBA API search (flexible matching)
+        player_dict = players.get_players()
+        player = next((p for p in player_dict if p["full_name"].lower() == player_name.lower()), None)
 
+        if not player:
+            return {"error": f"Player '{player_name}' not found."}
+
+        player_id = player["id"]
+
+        # ✅ Get player profile & stats
+        player_info = commonplayerinfo.CommonPlayerInfo(player_id=player_id).get_dict()
+        player_stats = playergamelogs.PlayerGameLogs(player_id_nullable=player_id, season_nullable="2023-24").get_dict()
+
+        # ✅ Extract profile data
+        profile = player_info["resultSets"][0]["rowSet"][0]
+        stats = player_stats["resultSets"][0]["rowSet"] if player_stats["resultSets"][0]["rowSet"] else []
+
+        # ✅ Ensure we have recent games
+        last_10_games = stats[:10] if stats else "No games played this season"
+
+        # ✅ Format data
+        player_data = {
+            "name": profile[3],  # "LeBron James"
+            "team": profile[19],  # "Lakers"
+            "position": profile[14],  # "Forward"
+            "height": profile[11],  # "6-9"
+            "weight": profile[12],  # "250"
+            "last_10_games": last_10_games
+        }
+
+        return player_data
+
+    except Exception as e:
+        return {"error": f"Failed to fetch data for {player_name}: {str(e)}"} 
 
 # ✅ Fetch player prop odds from sportsbooks (FanDuel, DraftKings, BetMGM)
 def fetch_props(game):
