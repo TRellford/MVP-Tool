@@ -4,17 +4,26 @@ from nba_api.stats.static import players
 import datetime
 
 # ✅ Fetch Today's NBA Games
+from nba_api.stats.endpoints import ScoreboardV2
+from datetime import datetime
+
 def fetch_games():
-    today = datetime.datetime.now().strftime("%Y-%m-%d")
+    """Fetch today's NBA games."""
     try:
-        scoreboard = scoreboardv2.ScoreboardV2().get_dict()
-        games = [
-            f"{game[5]} vs {game[4]}"  # Home vs Away Team
-            for game in scoreboard["resultSets"][0]["rowSet"]
-        ]
-        return games
+        today = datetime.today().strftime('%Y-%m-%d')
+        games_data = ScoreboardV2(day_offset=0).get_dict()
+        
+        games_list = []
+        for game in games_data["game_header"]:
+            game_date = game["GAME_DATE_EST"].split("T")[0]  # Extract date
+            if game_date == today:  # Ensure only today's games
+                matchup = f"{game['VISITOR_TEAM_ABBREVIATION']} vs {game['HOME_TEAM_ABBREVIATION']}"
+                games_list.append(matchup)
+
+        return games_list if games_list else ["No Games Today"]
+
     except Exception as e:
-        return [f"Error fetching games: {e}"]
+        return [f"Error fetching games: {str(e)}"]
 
 # ✅ Fetch Player Props for Selected Games
 def fetch_props(selected_games, prop_count, risk_level, sgp_enabled, sgp_plus_enabled):
