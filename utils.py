@@ -99,7 +99,7 @@ def scrape_sportsbook_odds():
 
 
 # ✅ 4️⃣ Web Scraping: Fetch Player Props
-def scrape_player_props(player_name):
+def fetch_props(player_name):
     """
     Scrapes sportsbook for player prop bets.
     """
