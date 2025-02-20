@@ -10,7 +10,7 @@ from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from bs4 import BeautifulSoup
-
+import requests
 # ✅ Configure Selenium WebDriver for Scraping Sportsbook Odds
 chrome_options = Options()
 chrome_options.add_argument("--headless")  # Run in headless mode (no browser window)
@@ -176,3 +176,28 @@ if __name__ == "__main__":
         show_game_selection_ui()
     elif page == "Player Search":
         show_player_search_ui()
+
+
+import requests
+
+def fetch_ml_spread_ou(game_id):
+    """
+    Scrapes sportsbook for Moneyline, Spread, and Over/Under odds for a given game.
+    """
+    try:
+        sportsbook_url = f"https://www.fanduel.com/sportsbook/nba/{game_id}"  # Update URL if needed
+        headers = {"User-Agent": "Mozilla/5.0"}
+        response = requests.get(sportsbook_url, headers=headers)
+
+        if response.status_code != 200:
+            return f"Error: Failed to fetch odds. Status Code: {response.status_code}"
+
+        # Parse JSON response (update based on sportsbook API structure)
+        data = response.json()
+        if "odds" not in data:
+            return f"Error: Unexpected JSON format - missing 'odds' key"
+
+        return data["odds"]
+
+    except Exception as e:
+        return f"Error fetching ML/Spread/O/U odds: {str(e)}"
