@@ -192,6 +192,11 @@ def show_player_search_ui():
         props = scrape_player_props(player_name)
         st.write(props if props else "No props found.")
 
+async def load_games():
+    today_games = await fetch_games(0)  # ✅ Use 'await' since it's an async function
+    print(today_games)  # ✅ This will correctly print the game list
+
+asyncio.run(load_games())  # ✅ Run the async function properly
 
 # ✅ Run Streamlit UI
 if __name__ == "__main__":
