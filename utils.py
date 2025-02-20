@@ -74,7 +74,7 @@ def fetch_ml_spread_ou():
 
 
 # ✅ 4️⃣ Fetch Real-Time Player Prop Bets
-def fetch_player_props(player_name):
+def fetch_props(player_name):
     """
     Fetches available player props (points, assists, rebounds, etc.) from sportsbooks.
     """
