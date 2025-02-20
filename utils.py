@@ -99,7 +99,7 @@ def scrape_sportsbook_odds():
 
 
 # ✅ 4️⃣ Web Scraping: Fetch Player Props
-def scrape_player_props(player_name):
+def fetch_props(player_name):
     """
     Scrapes sportsbook for player prop bets.
     """
@@ -113,7 +113,7 @@ def scrape_player_props(player_name):
         driver.quit()  # Close WebDriver after scraping
 
         props_data = {}
-        props = soup.find_all("div", class_="prop-module")  # Adjust based on sportsbook structure
+        props = soup.find_all("div", class_="prop-module")  # Adjust class names
 
         for prop in props:
             category = prop.find("div", class_="prop-category").text.strip()
@@ -125,7 +125,6 @@ def scrape_player_props(player_name):
 
     except Exception as e:
         return f"Error scraping player props: {str(e)}"
-
 
 # ✅ 5️⃣ Streamlit UI for Game Selection
 def show_game_selection_ui():
