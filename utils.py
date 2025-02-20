@@ -46,17 +46,7 @@ def fetch_games():
         return ["Error fetching games"]
 
 # ✅ Fetch real player data (box scores, stats, trends)
-def fetch_player_data(player_name):
-    try:
-        player_info = commonplayerinfo.CommonPlayerInfo(player_name=player_name).get_dict()
-        player_stats = leaguedashplayerstats.LeagueDashPlayerStats(season="2023-24").get_dict()
 
-        return {
-            "player_info": player_info,
-            "player_stats": player_stats
-        }
-    except Exception as e:
-        return {"error": f"Failed to fetch data for {player_name}: {e}"}
 
 # ✅ Fetch player prop odds from sportsbooks (FanDuel, DraftKings, BetMGM)
 def fetch_props(game):
