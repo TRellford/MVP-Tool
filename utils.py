@@ -2,15 +2,17 @@ import requests
 import streamlit as st
 from datetime import datetime, timedelta
 
-# ✅ Fetch NBA games for today or tomorrow
+# ✅ Fetch NBA games for today or tomorrow (Fixed API Response Handling)
 def fetch_games(day_offset=0):
     try:
         selected_date = (datetime.today() + timedelta(days=day_offset)).strftime('%Y-%m-%d')
         url = f"https://api.nba.com/schedule?date={selected_date}"  # Replace with correct API
 
         response = requests.get(url)
+
+        # ✅ Ensure valid response
         if response.status_code != 200:
-            st.error(f"API Error: {response.status}")
+            st.error(f"API Error: {response.status_code}")
             return []
 
         data = response.json()
@@ -20,8 +22,8 @@ def fetch_games(day_offset=0):
 
         games_list = []
         for game in data["games"]:
-            away_team = game["awayTeam"]["teamTricode"]
-            home_team = game["homeTeam"]["teamTricode"]
+            away_team = game.get("awayTeam", {}).get("teamTricode", "Unknown")
+            home_team = game.get("homeTeam", {}).get("teamTricode", "Unknown")
             matchup = f"{away_team} v {home_team}"
             games_list.append(matchup)
 
