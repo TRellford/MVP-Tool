@@ -10,29 +10,36 @@ from nba_api.stats.endpoints import ScoreboardV2
 from datetime import datetime, timedelta
 
 # ✅ Fetch NBA games for today or tomorrow (REAL DATA)
-def fetch_games(date_choice="today"):
+from nba_api.stats.endpoints import scoreboardv2
+from datetime import datetime, timedelta
+
+# ✅ Fetch Games for Today & Tomorrow
+def fetch_games():
     try:
-        # Set the correct date for filtering games
-        target_date = datetime.now().strftime("%Y-%m-%d") if date_choice == "today" else (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
+        # Set the current date
+        today = datetime.today()
+        today_str = today.strftime("%Y-%m-%d")
+        tomorrow = today + timedelta(days=1)
+        tomorrow_str = tomorrow.strftime("%Y-%m-%d")
 
-        # Fetch the scoreboard data
-        scoreboard = ScoreboardV2(dayOffset=0 if date_choice == "today" else 1)
-        games = scoreboard.get_dict()["resultSets"][0]["rowSet"]
+        # ✅ Fetch NBA schedule using real-time API
+        scoreboard = scoreboardv2.ScoreboardV2(day_offset=0)  # Today’s games
+        games_today = scoreboard.get_dict()["resultSets"][0]["rowSet"]
 
-        if not games:
-            return [f"No Games Available for {target_date}"]
+        scoreboard_tomorrow = scoreboardv2.ScoreboardV2(day_offset=1)  # Tomorrow’s games
+        games_tomorrow = scoreboard_tomorrow.get_dict()["resultSets"][0]["rowSet"]
 
-        game_list = []
-        for game in games:
-            home_team = game[6]  # Home team abbreviation (e.g., "LAL")
-            away_team = game[7]  # Away team abbreviation (e.g., "BOS")
-            game_date = game[0]  # Date of the game
-            
-            if game_date == target_date:  # Ensure correct date filtering
-                game_info = f"{away_team} vs {home_team} ({target_date})"
-                game_list.append(game_info)
+        # ✅ Process game data into "TEAM vs TEAM" format
+        def format_games(games):
+            return [f"{game[5]} vs {game[6]}" for game in games]  # Team Abbreviations
 
-        return game_list
+        return {
+            "today": format_games(games_today) if games_today else ["No Games Today"],
+            "tomorrow": format_games(games_tomorrow) if games_tomorrow else ["No Games Tomorrow"]
+        }
+
+    except Exception as e:
+        return {"error": f"Failed to fetch games: {str(e)}"}
 
     except Exception as e:
         print(f"Error fetching games: {e}")
