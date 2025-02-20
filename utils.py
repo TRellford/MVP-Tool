@@ -3,7 +3,7 @@ import streamlit as st
 from datetime import datetime, timedelta
 
 # ✅ Your API Key for The Odds API
-THE_ODDS_API_KEY = "4c9fcd3030eac22e83179bf85a0cee0b"
+THE_ODDS_API_KEY = "your_api_key_here"
 
 # ✅ Fetch NBA games from The Odds API
 def fetch_games(day_offset=0):
@@ -42,6 +42,22 @@ def fetch_games(day_offset=0):
 def fetch_sportsbook_odds(game):
     try:
         url = f"https://api.the-odds-api.com/v4/sports/basketball_nba/odds?apiKey={THE_ODDS_API_KEY}&regions=us&markets=h2h,spreads,totals"
+        response = requests.get(url)
+
+        if response.status_code == 401:
+            return {"error": "API Error 401: Unauthorized. Check your API key."}
+        elif response.status_code != 200:
+            return {}
+
+        return response.json()
+
+    except Exception as e:
+        return {"error": str(e)}
+
+# ✅ Fetch player props from The Odds API
+def fetch_player_props(game):
+    try:
+        url = f"https://api.the-odds-api.com/v4/sports/basketball_nba/odds?apiKey={THE_ODDS_API_KEY}&regions=us&markets=player_points,player_rebounds,player_assists"
         response = requests.get(url)
 
         if response.status_code == 401:
