@@ -28,7 +28,7 @@ async def fetch_games(day_offset=0):
     """
     try:
         selected_date = (datetime.today() + timedelta(days=day_offset)).strftime('%Y-%m-%d')
-        url = f"https://api.nba.com/schedule?date={selected_date}"  # Ensure this is the correct API
+        url = f"https://api.nba.com/schedule?date={selected_date}"  # Ensure correct API
 
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as response:
@@ -38,10 +38,10 @@ async def fetch_games(day_offset=0):
 
                 data = await response.json()
 
-        if "games" not in data:
+        if "games" not in data or not data["games"]:
             return []
 
-        # ✅ **Fix the issue where game names were showing incorrectly**
+        # ✅ Fix incorrect team names
         games_list = []
         for game in data["games"]:
             away_team = game["awayTeam"]["teamTricode"]  # Example: CHA
@@ -54,7 +54,6 @@ async def fetch_games(day_offset=0):
     except Exception as e:
         print(f"Error fetching games: {str(e)}")
         return []
-
 
 # ✅ 2️⃣ Async Fetch Last 10 Games + Opponent Matchups
 async def fetch_recent_player_stats(player_id, opponent_abbreviation=None):
@@ -162,8 +161,6 @@ def fetch_props(player_name):
 
 
 # ✅ 5️⃣ Streamlit UI for Game Selection
-import streamlit as st
-import asyncio
 
 def show_game_selection_ui():
     """
@@ -171,16 +168,16 @@ def show_game_selection_ui():
     """
     st.title("NBA Games Schedule")
 
-    # ✅ **Ensure radio buttons appear**
+    # ✅ Ensure radio buttons appear
     selected_option = st.radio("Select Date:", ["Today's Games", "Tomorrow's Games"], index=0)
 
-    # ✅ **Ensure async function is executed properly**
-    if selected_option == "Today's Games":
-        games = asyncio.run(fetch_games(0))  # Fetch today's games
-    else:
-        games = asyncio.run(fetch_games(1))  # Fetch tomorrow's games
+    # ✅ Properly handle async execution inside Streamlit
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
 
-    # ✅ **Ensure dropdown updates dynamically**
+    games = loop.run_until_complete(fetch_games(0)) if selected_option == "Today's Games" else loop.run_until_complete(fetch_games(1))
+
+    # ✅ Ensure dropdown updates dynamically
     if games:
         selected_game = st.selectbox("Choose a game:", games)
         st.write(f"**You selected:** {selected_game}")
