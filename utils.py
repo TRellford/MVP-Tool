@@ -1,20 +1,27 @@
-import requests
-from nba_api.stats.endpoints import scoreboard, commonplayerinfo, playergamelogs
-from nba_api.stats.static import players
+import time
+import pandas as pd
 from datetime import datetime, timedelta
+from nba_api.stats.static import players
+from nba_api.stats.endpoints import playercareerstats, leaguegamefinder, scoreboard
 
-# ✅ Fetch Today's NBA Games
-
-def fetch_games(day_offset=0):
+# 1️⃣ Fetch NBA Games (Today or Tomorrow)
+def fetch_games(day_offset=0, max_retries=3):
     """
     Fetches NBA games for today (default) or tomorrow (if day_offset=1).
     """
     try:
-        # Get the selected date
         selected_date = (datetime.today() + timedelta(days=day_offset)).strftime('%Y-%m-%d')
 
-        # Fetch games using NBA API's Scoreboard
-        games_data = scoreboard.Scoreboard(game_date=selected_date).get_dict()
+        for attempt in range(max_retries):
+            try:
+                # Using Scoreboard instead of ScoreboardV2 to avoid redirect errors
+                games_data = scoreboard.Scoreboard(game_date=selected_date).get_dict()
+                break  # Exit loop if request is successful
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    time.sleep(2)  # Retry with a short delay
+                else:
+                    return [f"API Error after {max_retries} retries: {str(e)}"]
 
         if "games" not in games_data:
             return ["No games available or API issue. Try again later."]
@@ -29,82 +36,55 @@ def fetch_games(day_offset=0):
     except Exception as e:
         return [f"API Error: {str(e)}"]
 
-# Example Usage:
-# Call fetch_games(0) for today’s games, fetch_games(1) for tomorrow’s games.
-games_today = fetch_games(0)
-games_tomorrow = fetch_games(1)
 
-print("Today's Games:", games_today)
-print("Tomorrow's Games:", games_tomorrow)
-# ✅ Fetch Player Props for Selected Games
-def fetch_props(selected_games, prop_count, risk_level, sgp_enabled, sgp_plus_enabled):
-    props = []
-    for game in selected_games:
-        try:
-            # ✅ Pull props based on live sportsbook data (FanDuel, DraftKings, BetMGM)
-            game_data = requests.get(f"https://api.sportsbook.com/odds/{game}").json()
-            
-            # ✅ Sort props by confidence score & filter by risk level
-            sorted_props = sorted(game_data, key=lambda x: x["confidence_score"], reverse=True)
-            filtered_props = [
-                prop for prop in sorted_props if risk_level in prop["risk_category"]
-            ]
-            
-            # ✅ Add only selected props per game
-            props.extend(filtered_props[:prop_count])
-        except Exception as e:
-            return [{"error": f"Failed to retrieve props for {game}: {e}"}]
-    return props
-
-# ✅ Fetch Moneyline, Spread, and Over/Under Predictions
-def fetch_ml_spread_ou(selected_games):
-    ml_data = []
-    for game in selected_games:
-        try:
-            odds_data = requests.get(f"https://api.sportsbook.com/ml_spread_ou/{game}").json()
-            ml_data.append(odds_data)
-        except Exception as e:
-            return [{"error": f"Failed to retrieve ML/Spread/O/U for {game}: {e}"}]
-    return ml_data
-
-# ✅ Fetch Player Data for Search Feature
-def fetch_player_data(player_name):
-    """Fetch player profile & last 10 games data."""
+# 2️⃣ Universal Player Search Function
+def get_player_stats(player_name):
+    """
+    Fetches career stats for any NBA player.
+    """
     try:
-        # ✅ Get player ID
-        from nba_api.stats.static import players
+        # Find player ID by searching for the player's name
         player_dict = players.get_players()
         player = next((p for p in player_dict if p["full_name"].lower() == player_name.lower()), None)
         
         if not player:
-            return {"error": f"Player '{player_name}' not found."}
+            return f"Error: Player '{player_name}' not found."
 
         player_id = player["id"]
+        
+        # Fetch career stats
+        career_stats = playercareerstats.PlayerCareerStats(player_id=player_id).get_data_frames()[0]
 
-        # ✅ Get player profile & stats
-        player_info = commonplayerinfo.CommonPlayerInfo(player_id=player_id).get_dict()
-        player_stats = playergamelogs.PlayerGameLogs(player_id_nullable=player_id, season_nullable="2023-24").get_dict()
+        # Convert to DataFrame if it's not already
+        if not isinstance(career_stats, pd.DataFrame):
+            career_stats = pd.DataFrame(career_stats)
 
-        # ✅ Extract profile data
-        profile = player_info["resultSets"][0]["rowSet"][0]
-
-        # ✅ Convert last 10 games into a readable format
-        stats_df = pd.DataFrame(player_stats["resultSets"][0]["rowSet"], 
-                                columns=player_stats["resultSets"][0]["headers"])
-
-        # ✅ Ensure all numeric data is converted to **strings** to prevent ArrowTypeError
-        stats_df = stats_df.applymap(lambda x: str(x) if isinstance(x, (int, float)) else x)
-
-        player_data = {
-            "name": profile[3],  # "LeBron James"
-            "team": profile[19],  # "Lakers"
-            "position": profile[14],  # "Forward"
-            "height": profile[11],  # "6-9"
-            "weight": profile[12],  # "250"
-            "last_10_games": stats_df.to_dict(orient="records")  # Ensure proper format
-        }
-
-        return player_data
+        return career_stats
 
     except Exception as e:
-        return {"error": f"Failed to fetch data for {player_name}: {str(e)}"}
+        return f"Failed to fetch data for {player_name}: {str(e)}"
+
+
+# 3️⃣ Helper Function to Display DataFrames (For Google Colab or UI Display)
+def display_player_stats(player_name):
+    """
+    Fetches and displays player stats in a structured format.
+    """
+    player_stats = get_player_stats(player_name)
+
+    if isinstance(player_stats, pd.DataFrame):
+        import ace_tools as tools
+        tools.display_dataframe_to_user(name=f"{player_name} Stats", dataframe=player_stats)
+    else:
+        print(player_stats)  # Prints error messages
+
+
+# Example Usage (Testing)
+if __name__ == "__main__":
+    # Test Game Fetching
+    print("Today's Games:", fetch_games(0))
+    print("Tomorrow's Games:", fetch_games(1))
+
+    # Test Player Search
+    player_name = input("Enter the player's name: ")  # User inputs any player
+    display_player_stats(player_name)
