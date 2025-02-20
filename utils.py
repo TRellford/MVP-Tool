@@ -6,11 +6,18 @@ from nba_api.stats.endpoints import ScoreboardV2, commonplayerinfo, playergamelo
 from nba_api.stats.endpoints import leaguedashplayerstats
 
 # ✅ Fetch NBA games for today or tomorrow (REAL DATA)
+from nba_api.stats.endpoints import ScoreboardV2
+from datetime import datetime, timedelta
+
+# ✅ Fetch NBA games for today or tomorrow (REAL DATA)
 def fetch_games(date_choice="today"):
     try:
+        # Set the correct date for filtering games
         target_date = datetime.now().strftime("%Y-%m-%d") if date_choice == "today" else (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
-        response = ScoreboardV2().get_dict()
-        games = response.get("resultSets", [])[0].get("rowSet", [])
+
+        # Fetch the scoreboard data
+        scoreboard = ScoreboardV2(dayOffset=0 if date_choice == "today" else 1)
+        games = scoreboard.get_dict()["resultSets"][0]["rowSet"]
 
         if not games:
             return [f"No Games Available for {target_date}"]
@@ -19,10 +26,17 @@ def fetch_games(date_choice="today"):
         for game in games:
             home_team = game[6]  # Home team abbreviation (e.g., "LAL")
             away_team = game[7]  # Away team abbreviation (e.g., "BOS")
-            game_info = f"{away_team} vs {home_team} ({target_date})"
-            game_list.append(game_info)
+            game_date = game[0]  # Date of the game
+            
+            if game_date == target_date:  # Ensure correct date filtering
+                game_info = f"{away_team} vs {home_team} ({target_date})"
+                game_list.append(game_info)
 
         return game_list
+
+    except Exception as e:
+        print(f"Error fetching games: {e}")
+        return ["Error fetching games"]
 
     except Exception as e:
         print(f"Error fetching games: {e}")
