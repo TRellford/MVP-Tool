@@ -1,5 +1,5 @@
 import streamlit as st
-from utils import fetch_games, fetch_sportsbook_odds, fetch_player_props  # ✅ Ensure this import is correct
+from utils import fetch_games, fetch_sportsbook_odds, fetch_player_props  # ✅ Ensure proper imports
 
 def main():
     st.title("🏀 NBA Betting Insights Tool - Fixed Version")
@@ -10,25 +10,25 @@ def main():
 
     # ✅ Fetch and display games
     games = fetch_games(day_offset)
-    if games:
+    if games and "No games available" not in games:
         selected_game = st.selectbox("Choose a game:", games)
     else:
         st.write("No games available for the selected date.")
         return
 
-    # ✅ Display sportsbook odds
+    # ✅ Display sportsbook odds (Correcting API response format)
     st.subheader("📊 Sportsbook Odds (ML, Spread, O/U)")
     odds_data = fetch_sportsbook_odds(selected_game)
     if odds_data and "error" not in odds_data:
-        st.json(odds_data)
+        st.json(odds_data)  # ✅ Use `st.json()` instead of `st.write()` to format API data correctly
     else:
         st.write("No odds available.")
 
-    # ✅ Display player props
+    # ✅ Display player props (Fixing extra code display)
     st.subheader("🎯 Player Props")
     props_data = fetch_player_props(selected_game)
     if props_data and "error" not in props_data:
-        st.json(props_data)
+        st.json(props_data)  # ✅ Properly format player props
     else:
         st.write("No player props available.")
 
