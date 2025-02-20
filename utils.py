@@ -43,16 +43,20 @@ async def fetch_games(day_offset=0):
 
 
 # ✅ 2️⃣ Async Fetch Last 10 Games + Opponent Matchups
-async def fetch_recent_player_stats(player_id, opponent_abbreviation):
+def get_recent_player_stats(player_id, opponent_abbreviation=None):
     """
     Fetches last 10 games stats for a player and previous matchups vs. today's opponent.
     """
     try:
+        # Fetch last 10 games
         game_log = playergamelog.PlayerGameLog(player_id=player_id, season="2023-24").get_data_frames()[0]
         last_10_games = game_log.head(10)
 
-        # Filter previous matchups against today’s opponent
-        prev_matchups = game_log[game_log["MATCHUP"].str.contains(opponent_abbreviation, na=False)]
+        # If opponent_abbreviation is provided, filter previous matchups
+        if opponent_abbreviation:
+            prev_matchups = game_log[game_log["MATCHUP"].str.contains(opponent_abbreviation, na=False)]
+        else:
+            prev_matchups = pd.DataFrame()
 
         return last_10_games, prev_matchups
 
