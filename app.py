@@ -16,15 +16,15 @@ def main():
         st.write("No games available for the selected date.")
         return
 
-    # ✅ Player Search
-    st.subheader("🔍 Search for a Player")
-    player_name = st.text_input("Enter player name:")
-    if player_name:
-        player_data = fetch_player_data(player_name)
-        if "error" not in player_data:
-            st.json(player_data)
-        else:
-            st.write(player_data["error"])
+# ✅ Player Search
+st.subheader("🔍 Search for a Player")
+player_name = st.text_input("Enter player name:")
+if player_name:
+    player_data = fetch_player_data(player_name)
+    if isinstance(player_data, dict) and "error" in player_data:
+        st.warning(player_data["error"])  # ✅ Show warning if player isn't found
+    else:
+        st.json(player_data)  # ✅ Display player data properly
 
     # ✅ Player Props Selection (Season Averages)
     st.subheader("📊 Player Season Averages")
