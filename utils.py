@@ -34,19 +34,24 @@ def fetch_games(day_offset=0):
         st.error(f"Error fetching games: {str(e)}")
         return []
 
-# ✅ Fetch player data by name
+import requests
+import streamlit as st
+
 # ✅ Fetch player data by name (Balldontlie API)
 def fetch_player_data(player_name):
     try:
         url = f"https://www.balldontlie.io/api/v1/players?search={player_name}"
         response = requests.get(url)
 
-        if response.status_code != 200:
-            return {"error": "Player not found"}
+        if response.status_code == 404:
+            return {"error": "Player not found. Try searching with a full name like 'LeBron James'."}
+        elif response.status_code != 200:
+            return {"error": f"API Error: {response.status_code}"}
 
         data = response.json()
+
         if not data.get("data"):
-            return {"error": "Player not found"}
+            return {"error": "No player data found. Check spelling or try a different name."}
 
         return data["data"]
 
