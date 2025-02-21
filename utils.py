@@ -35,9 +35,10 @@ def fetch_games(day_offset=0):
         return []
 
 # ✅ Fetch player data by name
+# ✅ Fetch player data by name (Balldontlie API)
 def fetch_player_data(player_name):
     try:
-        url = f"{BALLEDONTLIE_BASE_URL}/players?search={player_name}"
+        url = f"https://www.balldontlie.io/api/v1/players?search={player_name}"
         response = requests.get(url)
 
         if response.status_code != 200:
