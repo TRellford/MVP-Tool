@@ -1,8 +1,8 @@
 import streamlit as st
-from utils import fetch_games, fetch_sportsbook_odds, fetch_player_props  # ✅ Ensure proper imports
+from utils import fetch_games, fetch_player_data, fetch_player_stats
 
 def main():
-    st.title("🏀 NBA Betting Insights Tool - Fixed Version")
+    st.title("🏀 NBA Betting Insights Tool - Fully Updated")
 
     # ✅ Radio buttons for Today/Tomorrow selection
     selected_option = st.radio("Select Date:", ["Today's Games", "Tomorrow's Games"], index=0)
@@ -11,26 +11,33 @@ def main():
     # ✅ Fetch and display games
     games = fetch_games(day_offset)
     if games and "No games available" not in games:
-        selected_game = st.selectbox("Choose a game:", games)
+        selected_games = st.multiselect("Choose games:", games)  # ✅ Multi-game selection
     else:
         st.write("No games available for the selected date.")
         return
 
-    # ✅ Display sportsbook odds (Correcting API response format)
-    st.subheader("📊 Sportsbook Odds (ML, Spread, O/U)")
-    odds_data = fetch_sportsbook_odds(selected_game)
-    if odds_data and "error" not in odds_data:
-        st.json(odds_data)  # ✅ Use `st.json()` instead of `st.write()` to format API data correctly
-    else:
-        st.write("No odds available.")
+    # ✅ Player Search
+    st.subheader("🔍 Search for a Player")
+    player_name = st.text_input("Enter player name:")
+    if player_name:
+        player_data = fetch_player_data(player_name)
+        if "error" not in player_data:
+            st.json(player_data)
+        else:
+            st.write(player_data["error"])
 
-    # ✅ Display player props (Fixing extra code display)
-    st.subheader("🎯 Player Props")
-    props_data = fetch_player_props(selected_game)
-    if props_data and "error" not in props_data:
-        st.json(props_data)  # ✅ Properly format player props
-    else:
-        st.write("No player props available.")
+    # ✅ Player Props Selection (Season Averages)
+    st.subheader("📊 Player Season Averages")
+    if player_name and player_data and "error" not in player_data:
+        player_id = player_data[0]["id"]
+        
+        for game in selected_games:
+            st.subheader(f"📊 Stats for {game}")
+            stats_data = fetch_player_stats(player_id)
+            if stats_data:
+                st.json(stats_data)
+            else:
+                st.write("No stats available for this player.")
 
 if __name__ == "__main__":
     main()
