@@ -6,36 +6,30 @@ from datetime import datetime, timedelta
 BALLEDONTLIE_BASE_URL = "https://www.balldontlie.io/api/v1"
 
 # ✅ Fetch NBA games (Today/Tomorrow)
-def fetch_games(day_offset=0):
+
+def get_api_sports_io_key():
     try:
-        selected_date = (datetime.today() + timedelta(days=day_offset)).strftime('%Y-%m-%d')
-        url = f"{BALLEDONTLIE_BASE_URL}/games?start_date={selected_date}&end_date={selected_date}"
+        return st.secrets["API_SPORTS_IO_KEY"]
+    except KeyError:
+        st.error("Please add your api-sports.io API key to Streamlit secrets.")
+        st.stop()
 
-        response = requests.get(url)
-        if response.status_code != 200:
-            st.error(f"API Error: {response.status_code}")
-            return []
-
+@st.cache_data(ttl=60)
+def fetch_games(date):
+    api_key = get_api_sports_io_key()
+    url = f"https://api-sports.io/v1/fixtures?league=nba&date={date}&api_key={api_key}"
+    response = requests.get(url)
+    if response.status_code == 200:
         data = response.json()
-
-        if not data.get("data"):
-            return ["No games available"]
-
-        games_list = []
-        for game in data["data"]:
-            away_team = game["visitor_team"]["abbreviation"]
-            home_team = game["home_team"]["abbreviation"]
-            matchup = f"{away_team} v {home_team}"
-            games_list.append(matchup)
-
-        return games_list
-
-    except Exception as e:
-        st.error(f"Error fetching games: {str(e)}")
+        games = []
+        for game in data.get('response', []):
+            home_team = game['teams']['home']['name']
+            away_team = game['teams']['away']['name']
+            games.append(f"{home_team} vs {away_team}")
+        return games
+    else:
+        st.error(f"Failed to fetch games: HTTP {response.status_code}")
         return []
-
-import requests
-import streamlit as st
 
 # ✅ Fetch player data by name (Balldontlie API)
 def fetch_player_data(player_name):
