@@ -2,6 +2,7 @@ import streamlit as st
 import datetime
 import math
 import streamlit.components.v1 as components
+import unidecode 
 from utils import (
     get_games_by_date, fetch_player_data, fetch_best_props,
     fetch_game_predictions, fetch_sgp_builder, fetch_sharp_money_trends, fetch_all_players
@@ -14,9 +15,16 @@ st.sidebar.title("🔍 Navigation")
 menu_option = st.sidebar.selectbox("Select a Section:", ["Player Search", "Same Game Parlay", "SGP+", "Game Predictions"])
 
 # --- Section 1: Player Search ---
-# --- Section 1: Player Search ---
+ # Handles special characters
+
 if menu_option == "Player Search":
     st.header("🔍 Player Search & Prop Analysis")
+
+    # Fetch all players dynamically
+    all_players = fetch_all_players()  # Ensure this is implemented in utils.py
+
+    # Create a dictionary mapping last names to full names
+    last_name_mapping = {p.split()[-1]: p for p in all_players}
 
     # Nickname Mapping Dictionary
     nickname_mapping = {
@@ -25,21 +33,27 @@ if menu_option == "Player Search":
         "KD": "Kevin Durant",
         "AD": "Anthony Davis",
         "CP3": "Chris Paul",
-        "Joker": "Nikola Jokić",
+        "Joker": "Nikola Jokic",
         "The Beard": "James Harden",
         "Dame": "Damian Lillard",
         "Klay": "Klay Thompson",
         "Tatum": "Jayson Tatum"
     }
 
-    # Use a text input for searching players
-    player_name = st.text_input("Enter Player Name (e.g., Kevin Durant, Steph Curry)", key="player_search")
+    # User Input (text input for player search)
+    player_name = st.text_input("Enter Player Name, Last Name, or Nickname (e.g., Brunson, Steph Curry)", key="player_search")
 
-    # Convert nickname to full name if necessary
+    # Normalize the name (e.g., "Jokić" → "Jokic")
+    player_name = unidecode.unidecode(player_name)
+
+    # Check if input is a nickname
     if player_name in nickname_mapping:
         player_name = nickname_mapping[player_name]
 
-    # Display which player is being searched
+    # Check if input is a last name
+    elif player_name in last_name_mapping:
+        player_name = last_name_mapping[player_name]  # Convert last name to full name
+
     st.write(f"🔍 Searching stats for: {player_name}")
 
     selected_props = st.multiselect(
@@ -63,6 +77,8 @@ if menu_option == "Player Search":
                     avg_value = stats_df[prop].mean()
                     st.subheader(f"📊 {prop} - Last {trend_length} Games (Avg: {round(avg_value, 1)})")
                     st.bar_chart(stats_df[["Game Date", prop]].set_index("Game Date"))
+
+
 # --- Section 2: Same Game Parlay (SGP) ---
 elif menu_option == "Same Game Parlay":
     st.header("🎯 Same Game Parlay (SGP) - One Game Only")
