@@ -4,7 +4,7 @@ import math
 import streamlit.components.v1 as components
 from utils import (
     get_games_by_date, fetch_player_data, fetch_best_props,
-    fetch_game_predictions, fetch_sgp_builder, fetch_sharp_money_trends
+    fetch_game_predictions, fetch_sgp_builder, fetch_sharp_money_trends, fetch_all_players
 )
 
 st.set_page_config(page_title="NBA Betting AI", layout="wide")
