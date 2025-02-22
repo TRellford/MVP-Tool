@@ -14,27 +14,32 @@ st.sidebar.title("🔍 Navigation")
 menu_option = st.sidebar.selectbox("Select a Section:", ["Player Search", "Same Game Parlay", "SGP+", "Game Predictions"])
 
 # --- Section 1: Player Search ---
+# --- Section 1: Player Search ---
 if menu_option == "Player Search":
     st.header("🔍 Player Search & Prop Analysis")
 
-    # Fetch all NBA players dynamically (Instead of hardcoding)
-    all_players = sorted(fetch_all_players())  # Ensure `fetch_all_players()` is implemented in utils.py
-
-    # Dictionary for nicknames
+    # Nickname Mapping Dictionary
     nickname_mapping = {
         "Steph Curry": "Stephen Curry",
         "Bron": "LeBron James",
         "KD": "Kevin Durant",
         "AD": "Anthony Davis",
         "CP3": "Chris Paul",
+        "Joker": "Nikola Jokić",
+        "The Beard": "James Harden",
+        "Dame": "Damian Lillard",
+        "Klay": "Klay Thompson",
+        "Tatum": "Jayson Tatum"
     }
 
-    # Use selectbox instead of text input for auto-suggest
-    player_name = st.selectbox("Search for a Player:", all_players)
+    # Use a text input for searching players
+    player_name = st.text_input("Enter Player Name (e.g., Kevin Durant, Steph Curry)", key="player_search")
 
     # Convert nickname to full name if necessary
-    player_name = nickname_mapping.get(player_name, player_name)
+    if player_name in nickname_mapping:
+        player_name = nickname_mapping[player_name]
 
+    # Display which player is being searched
     st.write(f"🔍 Searching stats for: {player_name}")
 
     selected_props = st.multiselect(
