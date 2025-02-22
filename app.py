@@ -15,72 +15,45 @@ st.sidebar.title("🔍 Navigation")
 menu_option = st.sidebar.selectbox("Select a Section:", ["Player Search", "Same Game Parlay", "SGP+", "Game Predictions"])
 
 # --- Section 1: Player Search ---
- # Handles special characters
-
 if menu_option == "Player Search":
     st.header("🔍 Player Search & Prop Analysis")
 
     # Fetch all players dynamically
-    all_players = fetch_all_players()  # Ensure this is implemented in utils.py
+    all_players = fetch_all_players()
 
     # Create a dictionary mapping last names to full names
     last_name_mapping = {p.split()[-1].lower(): p for p in all_players}
-    # Nickname Mapping Dictionary
-nickname_mapping = {
-    "Steph Curry": "Stephen Curry",
-    "Bron": "LeBron James",
-    "KD": "Kevin Durant",
-    "AD": "Anthony Davis",
-    "CP3": "Chris Paul",
-    "Joker": "Nikola Jokic",
-    "The Beard": "James Harden",
-    "Dame": "Damian Lillard",
-    "Klay": "Klay Thompson",
-    "Tatum": "Jayson Tatum",
-    "Giannis": "Giannis Antetokounmpo"
-}
-
-games = get_games()
-if games:
-    st.subheader("📆 Today's Games")
-    selected_game = st.selectbox("Select a Game", [f"{game['home_team']} vs {game['away_team']}" for game in games])
-
-# 🔍 Player Search
-player_name = st.text_input("Enter Player Name, Last Name, or Nickname (e.g., Brunson, Steph Curry)", key="player_search")
-if player_name:
-    player_stats, h2h_stats = get_player_stats(player_name)
-    if player_stats:
-        st.subheader(f"📈 {player_name} Stats - Last 5, 10, 15 Games")
-        st.write(player_stats)
-        st.subheader(f"🏀 {player_name} vs Selected Team (This Season)")
-        st.write(h2h_stats if h2h_stats else "No head-to-head matchups this season.")
-
-# 🎯 Best SGP Props Based on User Preferences
-if st.button("Suggest Best SGP Props"):
-    min_odds = st.number_input("Min Odds (e.g., -250)", value=-250)
-    max_odds = st.number_input("Max Odds (e.g., +100)", value=100)
     
-    if selected_game:
-        sgp_props = suggest_best_sgp_props(selected_game, min_odds, max_odds)
-        st.subheader("🔥 Best SGP Prop Suggestions")
-        for prop in sgp_props:
-            st.write(f"{prop['player']} - {prop['prop']} ({prop['line']}, {prop['odds']})")
-            st.caption(f"🎙 {prop['insight']}")
+    # Nickname Mapping Dictionary
+    nickname_mapping = {
+        "Steph Curry": "Stephen Curry",
+        "Bron": "LeBron James",
+        "KD": "Kevin Durant",
+        "AD": "Anthony Davis",
+        "CP3": "Chris Paul",
+        "Joker": "Nikola Jokic",
+        "The Beard": "James Harden",
+        "Dame": "Damian Lillard",
+        "Klay": "Klay Thompson",
+        "Tatum": "Jayson Tatum",
+        "Giannis": "Giannis Antetokounmpo"
+    }
 
-# 🔥 Fetch and display NBA odds
-odds_data = get_nba_odds()
-if odds_data:
-    st.subheader("📊 NBA Betting Odds")
-    st.json(odds_data)
+    # Select a game
+    games = get_games_by_date(datetime.datetime.today())
+    if games:
+        st.subheader("📆 Today's Games")
+        selected_game = st.selectbox("Select a Game", [f"{game['home_team']} vs {game['away_team']}" for game in games])
 
-# 🚨 Scrape and display Underdog NBA injury updates
-st.subheader("🚨 Latest Injury Updates (Underdog NBA)")
-injury_updates = scrape_underdog_nba()
-if injury_updates:
-    for update in injury_updates:
-        st.write(f"🗞 {update}")
-else:
-    st.warning("No injury updates found.")
+    # 🔍 Player Search
+    player_name = st.text_input("Enter Player Name, Last Name, or Nickname", key="player_search")
+    if player_name:
+        player_stats, h2h_stats = fetch_player_data(player_name)
+        if player_stats:
+            st.subheader(f"📈 {player_name} Stats - Last 5, 10, 15 Games")
+            st.write(player_stats)
+            st.subheader(f"🏀 {player_name} vs Selected Team (This Season)")
+            st.write(h2h_stats if h2h_stats else "No head-to-head matchups this season.")
 
 # --- Section 2: Same Game Parlay (SGP) ---
 elif menu_option == "Same Game Parlay":
@@ -91,7 +64,6 @@ elif menu_option == "Same Game Parlay":
     available_games = get_games_by_date(game_date)
 
     selected_game = st.selectbox("Select a Game:", available_games, key="sgp_game")
-
     sgp_props = st.multiselect("Select Props for Same Game Parlay:", ["Points", "Assists", "Rebounds", "3PT Made"])
 
     if st.button("Generate SGP"):
