@@ -40,43 +40,47 @@ nickname_mapping = {
     "Giannis": "Giannis Antetokounmpo"
 }
 
+games = get_games()
+if games:
+    st.subheader("📆 Today's Games")
+    selected_game = st.selectbox("Select a Game", [f"{game['home_team']} vs {game['away_team']}" for game in games])
+
+# 🔍 Player Search
 player_name = st.text_input("Enter Player Name, Last Name, or Nickname (e.g., Brunson, Steph Curry)", key="player_search")
+if player_name:
+    player_stats, h2h_stats = get_player_stats(player_name)
+    if player_stats:
+        st.subheader(f"📈 {player_name} Stats - Last 5, 10, 15 Games")
+        st.write(player_stats)
+        st.subheader(f"🏀 {player_name} vs Selected Team (This Season)")
+        st.write(h2h_stats if h2h_stats else "No head-to-head matchups this season.")
 
-    # Normalize the name (e.g., "Jokić" → "Jokic")
-    player_name = unidecode.unidecode(player_name).strip().lower()
+# 🎯 Best SGP Props Based on User Preferences
+if st.button("Suggest Best SGP Props"):
+    min_odds = st.number_input("Min Odds (e.g., -250)", value=-250)
+    max_odds = st.number_input("Max Odds (e.g., +100)", value=100)
+    
+    if selected_game:
+        sgp_props = suggest_best_sgp_props(selected_game, min_odds, max_odds)
+        st.subheader("🔥 Best SGP Prop Suggestions")
+        for prop in sgp_props:
+            st.write(f"{prop['player']} - {prop['prop']} ({prop['line']}, {prop['odds']})")
+            st.caption(f"🎙 {prop['insight']}")
 
-    # Check if input is a nickname
-    if player_name in nickname_mapping:
-        player_name = nickname_mapping[player_name]
+# 🔥 Fetch and display NBA odds
+odds_data = get_nba_odds()
+if odds_data:
+    st.subheader("📊 NBA Betting Odds")
+    st.json(odds_data)
 
-    # Check if input is a last name
-    elif player_name in last_name_mapping:
-        player_name = last_name_mapping[player_name]  # Convert last name to full name
-
-    st.write(f"🔍 Searching stats for: {player_name}")
-
-    selected_props = st.multiselect(
-        "Choose Props to Display:",
-        ["Points", "Rebounds", "Assists", "3PT Made", "Blocks", "Steals"],
-        default=["Points", "Rebounds", "Assists"]
-    )
-
-    trend_length = st.radio("Select Trend Length", [5, 10, 15])
-
-    if st.button("Get Player Stats"):
-        stats_df = fetch_player_data(player_name, trend_length)
-
-        if "error" in stats_df:
-            st.error(stats_df["error"])
-        else:
-            st.write(f"📊 **Stats for {player_name}:**")
-
-            for prop in selected_props:
-                if prop in stats_df.columns:
-                    avg_value = stats_df[prop].mean()
-                    st.subheader(f"📊 {prop} - Last {trend_length} Games (Avg: {round(avg_value, 1)})")
-                    st.bar_chart(stats_df[["Game Date", prop]].set_index("Game Date"))
-
+# 🚨 Scrape and display Underdog NBA injury updates
+st.subheader("🚨 Latest Injury Updates (Underdog NBA)")
+injury_updates = scrape_underdog_nba()
+if injury_updates:
+    for update in injury_updates:
+        st.write(f"🗞 {update}")
+else:
+    st.warning("No injury updates found.")
 
 # --- Section 2: Same Game Parlay (SGP) ---
 elif menu_option == "Same Game Parlay":
