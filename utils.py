@@ -123,42 +123,74 @@ def fetch_sgp_builder(game_selection, props, multi_game=False):
         "Correlation Scores": {p: correlation_scores.get(p, "No correlation data") for p in props}
     }
 
-def fetch_best_props(player_name, trend_length):
-    """Fetches the best player props based on stats trends & defensive matchups."""
-    player_stats = fetch_player_data(player_name, trend_length)
+import requests
+from nba_api.stats.endpoints import leaguedashteamstats
+from utils import fetch_player_data  # Ensure fetch_player_data is implemented
 
+def fetch_best_props(player_name, trend_length, min_odds=-450, max_odds=-200):
+    """Fetches the best player props based on stats trends, defensive matchups, and risk levels."""
+    
+    # 🚀 Fetch player stats
+    player_stats = fetch_player_data(player_name, trend_length)
     if isinstance(player_stats, dict) and "error" in player_stats:
         return {"error": "Player stats unavailable."}
 
-    # Get Opponent Defensive Ratings
+    # 🚀 Fetch Defensive Matchup Data
     try:
-        team_defense = leaguedashteamstats.LeagueDashTeamStats(season="2023-24").get_data_frames()[0]
+        team_defense = leaguedashteamstats.LeagueDashTeamStats(season="2024-25").get_data_frames()[0]
+        weakest_teams = {
+            "points": team_defense.sort_values("OPP_PTS", ascending=False).head(3)["TEAM_NAME"].tolist(),
+            "assists": team_defense.sort_values("OPP_AST", ascending=False).head(3)["TEAM_NAME"].tolist(),
+            "rebounds": team_defense.sort_values("OPP_REB", ascending=False).head(3)["TEAM_NAME"].tolist(),
+        }
     except Exception as e:
-        return {"error": f"Failed to fetch team defense data: {str(e)}"}
+        return {"error": f"Failed to fetch defensive stats: {str(e)}"}
 
-    # Find Weakest Defenses in Points, Assists, Rebounds
-    weakest_teams = {
-        "points": team_defense.sort_values("OPP_PTS", ascending=False).head(3)["TEAM_NAME"].tolist(),
-        "assists": team_defense.sort_values("OPP_AST", ascending=False).head(3)["TEAM_NAME"].tolist(),
-        "rebounds": team_defense.sort_values("OPP_REB", ascending=False).head(3)["TEAM_NAME"].tolist(),
-    }
-
-    # Ensure player_stats has valid data
-    if player_stats.empty or "Points" not in player_stats.columns:
-        return {"error": "Player stats missing or incomplete."}
-
-    # Determine Best Prop Based on Trends & Matchups
+    # 🚀 Determine Best Prop Based on Player Trends
     best_prop = max(
-        [("Points", player_stats["Points"].mean()), 
-         ("Assists", player_stats["Assists"].mean()), 
-         ("Rebounds", player_stats["Rebounds"].mean())],
+        [("Points", player_stats["PTS"].mean()), 
+         ("Assists", player_stats["AST"].mean()), 
+         ("Rebounds", player_stats["REB"].mean())],
         key=lambda x: x[1]
     )
 
+    # 🚀 Fetch Dynamic Odds Instead of Hardcoding
+    odds_url = f"https://your_odds_api.com/api/props?player={player_name}"  # Replace with correct API
+    try:
+        odds_response = requests.get(odds_url)
+        if odds_response.status_code == 200:
+            odds_data = odds_response.json()
+        else:
+            odds_data = {"Points": -350, "Assists": -180, "Rebounds": +120}  # Default fallback values
+    except Exception as e:
+        odds_data = {"error": f"Failed to fetch odds: {str(e)}"}
+
+    # 🚀 Define Risk Levels
+    risk_levels = {
+        "🔵 Very Safe": (-450, -300),
+        "🟢 Safe": (-299, -200),
+        "🟡 Moderate Risk": (-199, +100),
+        "🟠 High Risk": (+101, +250),
+        "🔴 Very High Risk": (+251, float("inf"))
+    }
+
+    # 🚀 Get Best Prop's Odds
+    best_prop_name, best_stat = best_prop
+    prop_odds = odds_data.get(best_prop_name, 0)
+
+    # 🚀 Ensure Prop Falls Within Odds Range
+    if not (min_odds <= prop_odds <= max_odds):
+        return {"error": f"No props found within odds range {min_odds} to {max_odds}"}
+
+    # 🚀 Determine Risk Label
+    risk_label = next((label for label, (low, high) in risk_levels.items() if low <= prop_odds <= high), "Unknown Risk Level")
+
     return {
-        "best_prop": best_prop[0],
-        "average_stat": round(best_prop[1], 1),
-        "weak_defensive_teams": weakest_teams.get(best_prop[0].lower(), [])
+        "best_prop": best_prop_name,
+        "average_stat": round(best_stat, 1),
+        "odds": prop_odds,
+        "risk_level": risk_label,
+        "weak_defensive_teams": weakest_teams.get(best_prop_name.lower(), [])
     }
 
 def fetch_game_predictions(game_selection):
