@@ -40,7 +40,7 @@ nickname_mapping = {
     "Giannis": "Giannis Antetokounmpo"
 }
 
-   player_name = st.text_input("Enter Player Name, Last Name, or Nickname (e.g., Brunson, Steph Curry)", key="player_search")
+player_name = st.text_input("Enter Player Name, Last Name, or Nickname (e.g., Brunson, Steph Curry)", key="player_search")
 
     # Normalize the name (e.g., "Jokić" → "Jokic")
     player_name = unidecode.unidecode(player_name).strip().lower()
