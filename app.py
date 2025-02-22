@@ -17,7 +17,25 @@ menu_option = st.sidebar.selectbox("Select a Section:", ["Player Search", "Same 
 if menu_option == "Player Search":
     st.header("🔍 Player Search & Prop Analysis")
 
-    player_name = st.text_input("Enter Player Name (e.g., Kevin Durant)", key="player_search")
+    # Fetch all NBA players dynamically (Instead of hardcoding)
+    all_players = sorted(fetch_all_players())  # Ensure `fetch_all_players()` is implemented in utils.py
+
+    # Dictionary for nicknames
+    nickname_mapping = {
+        "Steph Curry": "Stephen Curry",
+        "Bron": "LeBron James",
+        "KD": "Kevin Durant",
+        "AD": "Anthony Davis",
+        "CP3": "Chris Paul",
+    }
+
+    # Use selectbox instead of text input for auto-suggest
+    player_name = st.selectbox("Search for a Player:", all_players)
+
+    # Convert nickname to full name if necessary
+    player_name = nickname_mapping.get(player_name, player_name)
+
+    st.write(f"🔍 Searching stats for: {player_name}")
 
     selected_props = st.multiselect(
         "Choose Props to Display:",
@@ -28,22 +46,18 @@ if menu_option == "Player Search":
     trend_length = st.radio("Select Trend Length", [5, 10, 15])
 
     if st.button("Get Player Stats"):
-        if not player_name:
-            st.warning("⚠️ Please enter a player name.")
+        stats_df = fetch_player_data(player_name, trend_length)
+
+        if "error" in stats_df:
+            st.error(stats_df["error"])
         else:
-            stats_df = fetch_player_data(player_name, trend_length)
+            st.write(f"📊 **Stats for {player_name}:**")
 
-            if "error" in stats_df:
-                st.error(stats_df["error"])
-            else:
-                st.write(f"📊 **Stats for {player_name}:**")
-
-                for prop in selected_props:
-                    if prop in stats_df.columns:
-                        avg_value = stats_df[prop].mean()
-                        st.subheader(f"📊 {prop} - Last {trend_length} Games (Avg: {round(avg_value, 1)})")
-                        st.bar_chart(stats_df[["Game Date", prop]].set_index("Game Date"))
-
+            for prop in selected_props:
+                if prop in stats_df.columns:
+                    avg_value = stats_df[prop].mean()
+                    st.subheader(f"📊 {prop} - Last {trend_length} Games (Avg: {round(avg_value, 1)})")
+                    st.bar_chart(stats_df[["Game Date", prop]].set_index("Game Date"))
 # --- Section 2: Same Game Parlay (SGP) ---
 elif menu_option == "Same Game Parlay":
     st.header("🎯 Same Game Parlay (SGP) - One Game Only")
