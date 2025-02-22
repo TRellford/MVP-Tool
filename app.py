@@ -45,7 +45,7 @@ if menu_option == "Player Search":
                         st.bar_chart(stats_df[["Game Date", prop]].set_index("Game Date"))
 
 # --- Section 2: SGP (Same Game Parlay - Only 1 Game Allowed) ---
-elif menu_option == "Same Game parlay":
+elif menu_option == "Same Game Parlay":
     st.header("🎯 Same Game Parlay (SGP) - One Game Only")
     
     selected_date = st.radio("Choose Game Date:", ["Today's Games", "Tomorrow's Games"], key="sgp_date")
