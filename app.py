@@ -24,27 +24,26 @@ if menu_option == "Player Search":
     all_players = fetch_all_players()  # Ensure this is implemented in utils.py
 
     # Create a dictionary mapping last names to full names
-    last_name_mapping = {p.split()[-1]: p for p in all_players}
-
+    last_name_mapping = {p.split()[-1].lower(): p for p in all_players}
     # Nickname Mapping Dictionary
-    nickname_mapping = {
-        "Steph Curry": "Stephen Curry",
-        "Bron": "LeBron James",
-        "KD": "Kevin Durant",
-        "AD": "Anthony Davis",
-        "CP3": "Chris Paul",
-        "Joker": "Nikola Jokic",
-        "The Beard": "James Harden",
-        "Dame": "Damian Lillard",
-        "Klay": "Klay Thompson",
-        "Tatum": "Jayson Tatum"
-    }
+nickname_mapping = {
+    "Steph Curry": "Stephen Curry",
+    "Bron": "LeBron James",
+    "KD": "Kevin Durant",
+    "AD": "Anthony Davis",
+    "CP3": "Chris Paul",
+    "Joker": "Nikola Jokic",
+    "The Beard": "James Harden",
+    "Dame": "Damian Lillard",
+    "Klay": "Klay Thompson",
+    "Tatum": "Jayson Tatum",
+    "Giannis": "Giannis Antetokounmpo"
+}
 
-    # User Input (text input for player search)
-    player_name = st.text_input("Enter Player Name, Last Name, or Nickname (e.g., Brunson, Steph Curry)", key="player_search")
+   player_name = st.text_input("Enter Player Name, Last Name, or Nickname (e.g., Brunson, Steph Curry)", key="player_search")
 
     # Normalize the name (e.g., "Jokić" → "Jokic")
-    player_name = unidecode.unidecode(player_name)
+    player_name = unidecode.unidecode(player_name).strip().lower()
 
     # Check if input is a nickname
     if player_name in nickname_mapping:
