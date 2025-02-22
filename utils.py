@@ -46,6 +46,29 @@ def get_games_by_date(target_date):
     except Exception as e:
         return [f"❌ Error fetching games: {str(e)}"]
 
+def fetch_all_players():
+    """
+    Fetches a list of all current NBA players dynamically from the API.
+    This replaces the need for a hardcoded player list.
+    """
+    url = "https://www.balldontlie.io/api/v1/players"
+    all_players = []
+    page = 1
+
+    while True:
+        response = requests.get(f"{url}?per_page=100&page={page}")
+        if response.status_code != 200:
+            return []  # Return an empty list if the API fails
+
+        data = response.json()
+        players = data["data"]
+        if not players:
+            break  # Stop if no more players are found
+
+        all_players.extend([player["first_name"] + " " + player["last_name"] for player in players])
+        page += 1
+
+    return sorted(all_players)  # Return sorted list for better UX
 
 # --- Fetch Player Stats ---
 @st.cache_data(ttl=600)
