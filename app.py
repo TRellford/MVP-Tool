@@ -9,7 +9,7 @@ st.set_page_config(page_title="NBA Betting AI", layout="wide")
 
 # --- Sidebar Navigation (Only Dropdown Menu) ---
 st.sidebar.title("🔍 Navigation")
-menu_option = st.sidebar.selectbox("Select a Section:", ["Player Search", "SGP", "SGP+", "Game Predictions"])
+menu_option = st.sidebar.selectbox("Select a Section:", ["Player Search", "Same Game Parlay", "SGP+", "Game Predictions"])
 
 # --- Section 1: Player Search ---
 if menu_option == "Player Search":
@@ -45,7 +45,7 @@ if menu_option == "Player Search":
                         st.bar_chart(stats_df[["Game Date", prop]].set_index("Game Date"))
 
 # --- Section 2: SGP (Same Game Parlay - Only 1 Game Allowed) ---
-elif menu_option == "SGP":
+elif menu_option == "Same Game parlay":
     st.header("🎯 Same Game Parlay (SGP) - One Game Only")
     
     selected_date = st.radio("Choose Game Date:", ["Today's Games", "Tomorrow's Games"], key="sgp_date")
@@ -53,7 +53,7 @@ elif menu_option == "SGP":
     
     selected_game = st.selectbox("Select a Game:", available_games, key="sgp_game")
     
-    sgp_props = st.multiselect("Select Props for SGP:", ["Points", "Assists", "Rebounds", "3PT Made"])
+    sgp_props = st.multiselect("Select Props for Same Game Parlay:", ["Points", "Assists", "Rebounds", "3PT Made"])
     
     if st.button("Generate SGP"):
         sgp_result = fetch_sgp_builder(selected_game, sgp_props)
