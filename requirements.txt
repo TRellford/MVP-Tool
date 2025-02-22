@@ -23,3 +23,5 @@ seaborn
 # JSON Handling & Async Processing
 json5
 aiohttp
+
+unidecode 
