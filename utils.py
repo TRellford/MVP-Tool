@@ -1,3 +1,4 @@
+
 import requests
 import json
 import streamlit as st
@@ -64,8 +65,7 @@ def get_games_by_date(date):
         st.error(f"❌ Unexpected error fetching games for {date_str}: {e}")
         print(f"❌ Unexpected error fetching games for {date_str}: {e}")
         return []
-​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​
-        
+
 @st.cache_data(ttl=3600)
 def fetch_best_props(selected_game, min_odds=-250, max_odds=100):
     """Fetch best player props for a selected game within a given odds range."""
