@@ -89,3 +89,36 @@ def fetch_player_data(player_name, selected_team=None):
             ]
 
     return
+@st.cache_data(ttl=3600)
+def fetch_best_props(selected_game, min_odds=-250, max_odds=100):
+    """Fetch best player props for a selected game within a given odds range."""
+    game_id = selected_game.get("game_id")  # Ensure we have a valid game ID
+    if not game_id:
+        st.error("🚨 Invalid game selected. No game ID found.")
+        return []
+
+    # 🔥 Replace with real API request for player props
+    props_api_url = f"https://api.the-odds-api.com/v4/sports/basketball_nba/events/{game_id}/odds"
+    response = requests.get(props_api_url, params={"apiKey": st.secrets["odds_api_key"], "regions": "us", "markets": "player_props"})
+
+    if response.status_code != 200:
+        st.error(f"❌ Error fetching player props: {response.status_code}")
+        return []
+
+    props_data = response.json()
+
+    # Extract and filter props based on user-defined odds range
+    best_props = []
+    for bookmaker in props_data.get("bookmakers", []):
+        for market in bookmaker.get("markets", []):
+            for outcome in market.get("outcomes", []):
+                if min_odds <= outcome.get("price", 0) <= max_odds:
+                    best_props.append({
+                        "player": outcome["name"],
+                        "prop": market["key"].replace("_", " ").title(),
+                        "line": outcome.get("point", "N/A"),
+                        "odds": outcome["price"],
+                        "insight": f"{outcome['name']} has strong recent performances in this prop category."
+                    })
+
+    return best_props if best_props else ["No suitable props found."]
