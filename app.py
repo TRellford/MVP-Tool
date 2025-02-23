@@ -62,14 +62,18 @@ if menu_option == "Player Search":
 elif menu_option == "Same Game Parlay":
     st.header("🎯 Same Game Parlay (SGP) - One Game Only")
 
-    selected_date = st.radio("Choose Game Date:", ["Today's Games", "Tomorrow's Games"], key="sgp_date")
-    # Use datetime.date for consistency
+    date_option = st.radio("Choose Game Date:", ["Today's Games", "Tomorrow's Games", "Custom Date"], key="sgp_date")
     base_date = datetime.date.today()
-    game_date = base_date if selected_date == "Today's Games" else base_date + datetime.timedelta(days=1)
-    # Pass as string in 'YYYY-MM-DD' format
+    
+    if date_option == "Today's Games":
+        game_date = base_date
+    elif date_option == "Tomorrow's Games":
+        game_date = base_date + datetime.timedelta(days=1)
+    else:
+        game_date = st.date_input("Select a Date", value=base_date, min_value=base_date - timedelta(days=30), max_value=base_date + timedelta(days=30))
+
     available_games = get_games_by_date(game_date.strftime('%Y-%m-%d'))
 
-    # Debugging output in Streamlit
     st.write(f"📅 Fetching games for: {game_date.strftime('%Y-%m-%d')}")
     st.write(f"🎮 Number of games found: {len(available_games)}")
 
@@ -79,7 +83,8 @@ elif menu_option == "Same Game Parlay":
         selected_game = game_options[selected_game_label]
         st.write(f"🎯 Selected Game: {selected_game}")
     else:
-        st.warning("🚨 No NBA games found for the selected date. This could be due to the All-Star break, off-season, or API data availability.")
+        st.warning("🚨 No NBA games found for the selected date. This could be due to the All-Star break, off-season, or API issues.")
+​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​
 # --- Section 3: Multi-Game Parlay (SGP+) ---       
 elif menu_option == "SGP+":
     st.header("🔥 Multi-Game Parlay (SGP+) - Select 2 to 12 Games")
