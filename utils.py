@@ -9,7 +9,6 @@ from datetime import datetime, timedelta
 NBA_ODDS_API_URL = "https://api.the-odds-api.com/v4/sports/basketball_nba/odds"
 
 # ✅ Cache Data for Efficiency
-@st.cache_data(ttl=3600)
 def get_games_by_date(date):
     """Fetch only NBA games for a specific date from the NBA API."""
     date_str = date.strftime("%Y-%m-%d")
