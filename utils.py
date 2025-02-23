@@ -1,7 +1,7 @@
 import requests
 import json
 import streamlit as st
-from nba_api.stats.endpoints import leaguegamefinder, playergamelogs, commonplayerinfo, playercareerstats
+from nba_api.stats.endpoints import scoreboardv2, playergamelogs, commonplayerinfo, playercareerstats
 from nba_api.stats.static import players, teams
 from datetime import datetime, timedelta
 
@@ -11,32 +11,30 @@ NBA_API_URL = "https://stats.nba.com/stats/"
 # ✅ Cache Data for Efficiency
 @st.cache_data(ttl=3600)
 def get_games_by_date(date):
-    """Fetch NBA games for a specific date from NBA API."""
+    """Fetch NBA games for a specific date from the NBA API (upcoming games)."""
     date_str = date.strftime("%Y-%m-%d")
-    
+
     try:
-        gamefinder = leaguegamefinder.LeagueGameFinder(date_from_nullable=date_str)
-        response = gamefinder.nba_response.get_json()  # Get raw response
-        print("🔍 RAW RESPONSE:", response)  # Debugging
-        
-        games = json.loads(response).get("resultSets", [])[0].get("rowSet", [])
-        
-        if not games:
-            print("🚨 No games found for this date.")
+        scoreboard = scoreboardv2.ScoreboardV2(game_date=date_str)
+        games_data = scoreboard.get_data_frames()[0]  # Get the main games dataframe
+
+        if games_data.empty:
             return []
 
-        formatted_games = []
-        for game in games:
-            formatted_games.append({
-                "home_team": game[6],  # Home team name
-                "away_team": game[7],  # Away team name
-                "game_date": game[0]   # Game date
-            })
+        formatted_games = [
+            {
+                "home_team": row["HOME_TEAM_NAME"],
+                "away_team": row["VISITOR_TEAM_NAME"],
+                "game_id": row["GAME_ID"],
+                "game_time": row["GAME_STATUS_TEXT"]
+            }
+            for _, row in games_data.iterrows()
+        ]
         
         return formatted_games
 
     except Exception as e:
-        print(f"❌ Error fetching games: {e}")
+        print(f"❌ Error fetching scheduled games: {e}")
         return []
 
 # ✅ Fetch player data from NBA API
@@ -90,39 +88,6 @@ def fetch_all_players():
     return [p["full_name"] for p in player_list]
 
 @st.cache_data(ttl=3600)
-def get_player_stats(player_name):
-    """Fetch last 5, 10, 15 game logs for a player."""
-    player_dict = {p["full_name"]: p["id"] for p in players.get_active_players()}
-    player_id = player_dict.get(player_name)
-    
-    if not player_id:
-        return None, None
-
-    logs = playergamelogs.PlayerGameLogs(player_id=player_id, season_nullable="2023-24", last_n_games=15)
-    df = logs.get_data_frames()[0]
-
-    if df.empty:
-        return None, None
-
-    # Split into 5, 10, 15 game data
-    last_5 = df.iloc[:5].to_dict(orient="records")
-    last_10 = df.iloc[:10].to_dict(orient="records")
-    last_15 = df.iloc[:15].to_dict(orient="records")
-
-    return {"last_5": last_5, "last_10": last_10, "last_15": last_15}, get_h2h_stats(player_id)
-
-@st.cache_data(ttl=3600)
-def get_h2h_stats(player_id):
-    """Fetch player performance against the upcoming opponent this season."""
-    logs = playergamelogs.PlayerGameLogs(player_id=player_id, season_nullable="2023-24")
-    df = logs.get_data_frames()[0]
-    
-    if df.empty:
-        return "No head-to-head data available this season."
-    
-    return df.to_dict(orient="records")
-
-@st.cache_data(ttl=3600)
 def fetch_best_props(selected_game, min_odds=-250, max_odds=100):
     """Suggest best props within user-defined odds range."""
     # Mock data - Replace with real prop pulling logic
@@ -137,13 +102,11 @@ def fetch_best_props(selected_game, min_odds=-250, max_odds=100):
 @st.cache_data(ttl=3600)
 def fetch_sgp_builder(selected_game, sgp_props, multi_game=False):
     """Build a Same Game Parlay based on user preferences."""
-    # Mock AI-driven prop selection
     return f"SGP Generated for {selected_game} with selected props: {sgp_props}"
 
 @st.cache_data(ttl=3600)
 def fetch_game_predictions(selected_games):
     """Fetch AI-based game predictions."""
-    # Mock predictions - Replace with AI model
     predictions = {
         game: {"ML": "Lakers", "Spread": "-4.5", "O/U": "215.5", "confidence_score": 78}
         for game in selected_games
@@ -153,7 +116,6 @@ def fetch_game_predictions(selected_games):
 @st.cache_data(ttl=3600)
 def fetch_sharp_money_trends(selected_games):
     """Fetch betting trends based on sharp money movement."""
-    # Mock data
     return {game: "Sharp money favoring Lakers -4.5" for game in selected_games}
 
 NBA_ODDS_API_URL = "https://api.the-odds-api.com/v4/sports/basketball_nba/odds"
@@ -168,4 +130,3 @@ def get_nba_odds(api_key):
     else:
         st.error(f"Error fetching NBA odds: {response.status_code}")
         return []
-
