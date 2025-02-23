@@ -41,12 +41,6 @@ if menu_option == "Player Search":
         "Giannis": "Giannis Antetokounmpo"
     }
 
-    # Select a game
-    games = get_games_by_date(datetime.datetime.today())
-    if games:
-        st.subheader("📆 Today's Games")
-        selected_game = st.selectbox("Select a Game", [f"{game['home_team']} vs {game['away_team']}" for game in games])
-
     # 🔍 Player Search
     player_name = st.text_input("Enter Player Name, Last Name, or Nickname", key="player_search")
 
@@ -73,6 +67,13 @@ elif menu_option == "Same Game Parlay":
     available_games = get_games_by_date(game_date)
 
     selected_game = st.selectbox("Select a Game:", available_games, key="sgp_game")
+    sgp_props = st.multiselect("Select Props for Same Game Parlay:", ["Points", "Assists", "Rebounds", "3PT Made"])
+
+    if available_games:
+        game_options = {f"{game['home_team']} vs {game['away_team']}": game for game in available_games}
+        selected_game_label = st.selectbox("Select a Game:", list(game_options.keys()), key="sgp_game")
+        selected_game = game_options[selected_game_label]
+
     sgp_props = st.multiselect("Select Props for Same Game Parlay:", ["Points", "Assists", "Rebounds", "3PT Made"])
 
     if st.button("Generate SGP"):
