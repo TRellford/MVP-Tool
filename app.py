@@ -5,8 +5,8 @@ import streamlit.components.v1 as components
 import unidecode
 from utils import (
     get_games_by_date, fetch_player_data, fetch_best_props,
-    fetch_game_predictions, fetch_sgp_builder, fetch_sharp_money_trends, fetch_all_players, 
-    get_nba_odds, scrape_underdog_nba, suggest_best_sgp_props
+    fetch_game_predictions, fetch_sgp_builder, fetch_sharp_money_trends,
+    fetch_all_players, get_player_stats
 )
 
 st.set_page_config(page_title="NBA Betting AI", layout="wide")
@@ -24,7 +24,7 @@ if menu_option == "Player Search":
 
     # Create a dictionary mapping last names to full names
     last_name_mapping = {p.split()[-1].lower(): p for p in all_players}
-    
+
     # Nickname Mapping Dictionary
     nickname_mapping = {
         "Steph Curry": "Stephen Curry",
@@ -49,7 +49,7 @@ if menu_option == "Player Search":
     # 🔍 Player Search
     player_name = st.text_input("Enter Player Name, Last Name, or Nickname", key="player_search")
     if player_name:
-        player_stats, h2h_stats = fetch_player_data(player_name)
+        player_stats, h2h_stats = get_player_stats(player_name)
         if player_stats:
             st.subheader(f"📈 {player_name} Stats - Last 5, 10, 15 Games")
             st.write(player_stats)
