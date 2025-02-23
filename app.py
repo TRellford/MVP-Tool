@@ -71,6 +71,11 @@ elif menu_option == "Same Game Parlay":
         selected_game_label = st.selectbox("Select a Game:", list(game_options.keys()), key="sgp_game")
         selected_game = game_options[selected_game_label]
 
+                # ✅ Display the selected game for debugging
+        st.write(f"🎯 Selected Game: {selected_game}")
+    else:
+        st.warning("🚨 No NBA games found for the selected date.")
+
     sgp_props = st.multiselect("Select Props for Same Game Parlay:", ["Points", "Assists", "Rebounds", "3PT Made"])
 
     if st.button("Generate SGP"):
