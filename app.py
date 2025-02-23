@@ -2,10 +2,11 @@ import streamlit as st
 import datetime
 import math
 import streamlit.components.v1 as components
-import unidecode 
+import unidecode
 from utils import (
     get_games_by_date, fetch_player_data, fetch_best_props,
-    fetch_game_predictions, fetch_sgp_builder, fetch_sharp_money_trends, fetch_all_players
+    fetch_game_predictions, fetch_sgp_builder, fetch_sharp_money_trends, fetch_all_players, 
+    get_nba_odds, scrape_underdog_nba, suggest_best_sgp_props
 )
 
 st.set_page_config(page_title="NBA Betting AI", layout="wide")
