@@ -130,3 +130,25 @@ def get_nba_odds(api_key):
     else:
         st.error(f"Error fetching NBA odds: {response.status_code}")
         return []
+
+@st.cache_data(ttl=3600)
+def get_player_stats(player_name):
+    """Fetch last 5, 10, 15 game logs for a player."""
+    player_dict = {p["full_name"]: p["id"] for p in players.get_active_players()}
+    player_id = player_dict.get(player_name)
+    
+    if not player_id:
+        return None, None
+
+    logs = playergamelogs.PlayerGameLogs(player_id=player_id, season_nullable="2023-24", last_n_games=15)
+    df = logs.get_data_frames()[0]
+
+    if df.empty:
+        return None, None
+
+    # Split into 5, 10, 15 game data
+    last_5 = df.iloc[:5].to_dict(orient="records")
+    last_10 = df.iloc[:10].to_dict(orient="records")
+    last_15 = df.iloc[:15].to_dict(orient="records")
+
+    return {"last_5": last_5, "last_10": last_10, "last_15": last_15}
