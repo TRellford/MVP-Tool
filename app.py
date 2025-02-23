@@ -66,9 +66,6 @@ elif menu_option == "Same Game Parlay":
     game_date = datetime.datetime.today() if selected_date == "Today's Games" else datetime.datetime.today() + datetime.timedelta(days=1)
     available_games = get_games_by_date(game_date)
 
-    selected_game = st.selectbox("Select a Game:", available_games, key="sgp_game")
-    sgp_props = st.multiselect("Select Props for Same Game Parlay:", ["Points", "Assists", "Rebounds", "3PT Made"])
-
     if available_games:
         game_options = {f"{game['home_team']} vs {game['away_team']}": game for game in available_games}
         selected_game_label = st.selectbox("Select a Game:", list(game_options.keys()), key="sgp_game")
