@@ -3,10 +3,11 @@ import datetime
 import math
 import streamlit.components.v1 as components
 import unidecode
+from nba_api.stats.static import teams
 from utils import (
     get_games_by_date, fetch_player_data, fetch_best_props,
     fetch_game_predictions, fetch_sgp_builder, fetch_sharp_money_trends,
-    fetch_all_players, get_player_stats, fetch_player_data
+    fetch_all_players, get_player_stats
 )
 from utils import get_nba_odds
 
@@ -43,6 +44,7 @@ if menu_option == "Player Search":
 
     # Select a game
     games = get_games_by_date(datetime.datetime.today())
+    print("DEBUG: Games Fetched ->", games)
     if games:
         st.subheader("📆 Today's Games")
         selected_game = st.selectbox("Select a Game", [f"{game['home_team']} vs {game['away_team']}" for game in games])
