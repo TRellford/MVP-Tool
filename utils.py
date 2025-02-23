@@ -9,22 +9,28 @@ from datetime import datetime, timedelta
 NBA_ODDS_API_URL = "https://api.the-odds-api.com/v4/sports/basketball_nba/odds"
 
 # ✅ Cache Data for Efficiency
+@st.cache_data(ttl=3600)
 def get_games_by_date(date):
     """Fetch only NBA games for a specific date from the NBA API."""
-    date_str = date.strftime("%Y-%m-%d")
+    # Handle both string and datetime.date inputs
+    if isinstance(date, str):
+        date_str = date
+    else:
+        date_str = date.strftime("%Y-%m-%d")
 
     try:
         scoreboard = scoreboardv2.ScoreboardV2(game_date=date_str)
         games_data = scoreboard.get_data_frames()[0]  # Get the main games dataframe
 
-        # 🔍 Debugging: Print raw API response
-        print("🔍 RAW GAME DATA:", games_data)
+        # Display raw data in Streamlit for debugging
+        st.write("🔍 Raw Game Data from API:", games_data)
 
         if games_data.empty:
+            st.warning(f"🚨 No games found for {date_str}.")
             print("🚨 No games found for this date.")
             return []
 
-        # ✅ Filter only NBA games (league_id should be '00' for NBA)
+        # Filter only NBA games (league_id '00' for NBA)
         nba_games = games_data[games_data["LEAGUE_ID"] == "00"]
 
         formatted_games = [
@@ -40,10 +46,10 @@ def get_games_by_date(date):
         return formatted_games
 
     except Exception as e:
+        st.error(f"❌ Error fetching scheduled games: {e}")
         print(f"❌ Error fetching scheduled games: {e}")
         return []
-
-
+​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​
 @st.cache_data(ttl=3600)
 def fetch_best_props(selected_game, min_odds=-250, max_odds=100):
     """Fetch best player props for a selected game within a given odds range."""
