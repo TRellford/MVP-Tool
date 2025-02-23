@@ -6,7 +6,7 @@ import unidecode
 from utils import (
     get_games_by_date, fetch_player_data, fetch_best_props,
     fetch_game_predictions, fetch_sgp_builder, fetch_sharp_money_trends,
-    fetch_all_players, get_nba_odds, fetch_best_props
+    fetch_all_players, fetch_best_props
 )
 from nba_api.stats.static import teams
 
