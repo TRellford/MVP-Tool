@@ -8,6 +8,7 @@ from utils import (
     fetch_game_predictions, fetch_sgp_builder, fetch_sharp_money_trends,
     fetch_all_players, get_player_stats
 )
+from utils import get_nba_odds
 
 st.set_page_config(page_title="NBA Betting AI", layout="wide")
 
