@@ -80,9 +80,7 @@ elif menu_option == "Same Game Parlay":
         # ✅ Display the selected game for debugging
         st.write(f"🎯 Selected Game: {selected_game}")
     else:
-        st.warning("🚨 No NBA games found for the selected date.")
-​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​
-
+        st.warning("🚨 No NBA games found for the selected date.")​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​
 # --- Section 3: Multi-Game Parlay (SGP+) ---
 elif menu_option == "SGP+":
     st.header("🔥 Multi-Game Parlay (SGP+) - Select 2 to 12 Games")
