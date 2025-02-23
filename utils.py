@@ -100,3 +100,16 @@ def fetch_sharp_money_trends(selected_games):
     """Fetch betting trends based on sharp money movement."""
     # Mock data
     return {game: "Sharp money favoring Lakers -4.5" for game in selected_games}
+
+NBA_ODDS_API_URL = "https://api.the-odds-api.com/v4/sports/basketball_nba/odds"
+
+def get_nba_odds(api_key):
+    """Fetch NBA odds from The Odds API."""
+    url = f"{NBA_ODDS_API_URL}?apiKey={api_key}&regions=us&markets=h2h,spreads,totals&oddsFormat=american"
+    response = requests.get(url)
+
+    if response.status_code == 200:
+        return response.json()
+    else:
+        st.error(f"Error fetching NBA odds: {response.status_code}")
+        return []
