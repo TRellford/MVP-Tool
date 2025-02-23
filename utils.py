@@ -10,24 +10,37 @@ NBA_API_URL = "https://stats.nba.com/stats/"
 
 # ✅ Cache Data for Efficiency
 @st.cache_data(ttl=3600)
+from nba_api.stats.endpoints import leaguegamefinder
+import json
+
 def get_games_by_date(date):
     """Fetch NBA games for a specific date from NBA API."""
     date_str = date.strftime("%Y-%m-%d")
-    gamefinder = leaguegamefinder.LeagueGameFinder(date_from_nullable=date_str, date_to_nullable=date_str)
-    games = gamefinder.get_data_frames()[0]
     
-    if games.empty:
-        return []
+    try:
+        gamefinder = leaguegamefinder.LeagueGameFinder(date_from_nullable=date_str)
+        response = gamefinder.nba_response.get_json()  # Get raw response
+        print("🔍 RAW RESPONSE:", response)  # Debugging
+        
+        games = json.loads(response).get("resultSets", [])[0].get("rowSet", [])
+        
+        if not games:
+            print("🚨 No games found for this date.")
+            return []
 
-    game_list = []
-    for _, game in games.iterrows():
-        game_list.append({
-            "game_id": game["GAME_ID"],
-            "home_team": game["MATCHUP"].split(" ")[-1],
-            "away_team": game["MATCHUP"].split(" ")[0],
-        })
-    
-    return game_list
+        formatted_games = []
+        for game in games:
+            formatted_games.append({
+                "home_team": game[6],  # Home team name
+                "away_team": game[7],  # Away team name
+                "game_date": game[0]   # Game date
+            })
+        
+        return formatted_games
+
+    except Exception as e:
+        print(f"❌ Error fetching games: {e}")
+        return []
 
 # ✅ Fetch player data from NBA API
 def fetch_player_data(player_name, selected_team=None):
@@ -158,24 +171,4 @@ def get_nba_odds(api_key):
     else:
         st.error(f"Error fetching NBA odds: {response.status_code}")
         return []
-import requests
-import json
 
-def fetch_nba_data(url, params=None):
-    """Generic function to fetch NBA data with error handling."""
-    try:
-        response = requests.get(url, params=params)
-        response.raise_for_status()  # Raises an error if the request fails
-
-        if response.status_code == 200:
-            try:
-                return response.json()  # ✅ Ensure we return valid JSON
-            except json.JSONDecodeError:
-                print("🚨 Error: Invalid JSON response received!")
-                return None
-        else:
-            print(f"🚨 API Error {response.status_code}: {response.text}")
-            return None
-    except requests.exceptions.RequestException as e:
-        print(f"❌ Request failed: {e}")
-        return None
