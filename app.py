@@ -1,15 +1,12 @@
 import streamlit as st
 import datetime
 import math
-import streamlit.components.v1 as components
-import unidecode
-from nba_api.stats.static import teams
 from utils import (
     get_games_by_date, fetch_player_data, fetch_best_props,
     fetch_game_predictions, fetch_sgp_builder, fetch_sharp_money_trends,
-    fetch_all_players, get_player_stats
+    fetch_all_players, get_nba_odds
 )
-from utils import get_nba_odds
+from nba_api.stats.static import teams
 
 st.set_page_config(page_title="NBA Betting AI", layout="wide")
 
@@ -44,7 +41,6 @@ if menu_option == "Player Search":
 
     # Select a game
     games = get_games_by_date(datetime.datetime.today())
-    print("DEBUG: Games Fetched ->", games)
     if games:
         st.subheader("📆 Today's Games")
         selected_game = st.selectbox("Select a Game", [f"{game['home_team']} vs {game['away_team']}" for game in games])
@@ -52,7 +48,7 @@ if menu_option == "Player Search":
     # 🔍 Player Search
     player_name = st.text_input("Enter Player Name, Last Name, or Nickname", key="player_search")
     
-    if player_name: # Allow team selection for H2H analysis
+    if player_name:
         selected_team = st.selectbox("Select Opponent for H2H Analysis (Optional)", ["None"] + [t["full_name"] for t in teams.get_teams()])
         selected_team = None if selected_team == "None" else selected_team
         
@@ -65,6 +61,7 @@ if menu_option == "Player Search":
         if h2h_stats:
             st.subheader(f"🏀 {player_name} vs {selected_team} (This Season)")
             st.write(h2h_stats)
+
 # --- Section 2: Same Game Parlay (SGP) ---
 elif menu_option == "Same Game Parlay":
     st.header("🎯 Same Game Parlay (SGP) - One Game Only")
@@ -126,7 +123,7 @@ elif menu_option == "Game Predictions":
                 st.warning("⚠️ No predictions available for selected games.")
             else:
                 for game, pred in predictions.items():
-                    confidence_score = pred.get("confidence_score", 50)  # Default 50 if not available
+                    confidence_score = pred.get("confidence_score", 50)
                     st.subheader(f"📊 {game} (Confidence: {confidence_score}%)")
                     st.progress(confidence_score / 100)
                     st.write(pred)
