@@ -11,35 +11,37 @@ NBA_ODDS_API_URL = "https://api.the-odds-api.com/v4/sports/basketball_nba/odds"
 # ✅ Cache Data for Efficiency
 @st.cache_data(ttl=3600)
 def get_games_by_date(date):
-    """Fetch NBA games for a specific date in the 2024-25 season."""
+    """Fetch only NBA games for a specific date from the NBA API."""
+    date_str = date.strftime("%Y-%m-%d")
+
     try:
-        # Convert date to string format for filtering
-        date_str = date.strftime('%Y-%m-%d')
+        scoreboard = scoreboardv2.ScoreboardV2(game_date=date_str)
+        games_data = scoreboard.get_data_frames()[0]  # Get the main games dataframe
 
-        # Fetch all games
-        game_finder = leaguegamefinder.LeagueGameFinder()
-        games = game_finder.get_data_frames()[0]
+        # 🔍 Debugging: Print raw API response
+        print("🔍 RAW GAME DATA:", games_data)
 
-        # Ensure season is correctly filtered (2024-25 season ID format)
-        season_id = '22024'  # '2' + '2024' (format for season IDs in nba_api)
+        if games_data.empty:
+            print("🚨 No games found for this date.")
+            return []
 
-        # Filter games by date and season
-        games = games[(games['SEASON_ID'] == season_id) & (games['GAME_DATE'] == date_str)]
+        # ✅ Filter only NBA games (league_id should be '00' for NBA)
+        nba_games = games_data[games_data["LEAGUE_ID"] == "00"]
 
-        # Extract relevant details
-        game_list = []
-        for _, row in games.iterrows():
-            game_list.append({
+        formatted_games = [
+            {
+                "home_team": row["HOME_TEAM_NAME"],
+                "away_team": row["VISITOR_TEAM_NAME"],
                 "game_id": row["GAME_ID"],
-                "home_team": row["MATCHUP"].split(" ")[-1],  # Extract home team from matchup string
-                "away_team": row["MATCHUP"].split(" ")[0],   # Extract away team
                 "date": row["GAME_DATE"]
-            })
-
-        return game_list
+            }
+            for _, row in nba_games.iterrows()
+        ]
+        
+        return formatted_games
 
     except Exception as e:
-        print(f"Error fetching games: {e}")
+        print(f"❌ Error fetching scheduled games: {e}")
         return []
 @st.cache_data(ttl=3600)
 def fetch_best_props(selected_game, min_odds=-250, max_odds=100):
