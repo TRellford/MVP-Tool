@@ -63,30 +63,25 @@ elif menu_option == "Same Game Parlay":
     st.header("🎯 Same Game Parlay (SGP) - One Game Only")
 
     selected_date = st.radio("Choose Game Date:", ["Today's Games", "Tomorrow's Games"], key="sgp_date")
-    game_date = datetime.datetime.today() if selected_date == "Today's Games" else datetime.datetime.today() + datetime.timedelta(days=1)
-    available_games = get_games_by_date(game_date)
+    # Use datetime.date.today() to get just the date
+    game_date = datetime.date.today() if selected_date == "Today's Games" else datetime.date.today() + datetime.timedelta(days=1)
+    # Convert the date to 'YYYY-MM-DD' format
+    available_games = get_games_by_date(game_date.strftime('%Y-%m-%d'))
+
+    # Add debugging information
+    st.write(f"Fetching games for date: {game_date.strftime('%Y-%m-%d')}")
+    st.write(f"Number of games found: {len(available_games)}")
 
     if available_games:
         game_options = {f"{game['home_team']} vs {game['away_team']}": game for game in available_games}
         selected_game_label = st.selectbox("Select a Game:", list(game_options.keys()), key="sgp_game")
         selected_game = game_options[selected_game_label]
 
-                # ✅ Display the selected game for debugging
+        # ✅ Display the selected game for debugging
         st.write(f"🎯 Selected Game: {selected_game}")
     else:
         st.warning("🚨 No NBA games found for the selected date.")
-
-    sgp_props = st.multiselect("Select Props for Same Game Parlay:", ["Points", "Assists", "Rebounds", "3PT Made"])
-
-    if st.button("Generate SGP"):
-        sgp_result = fetch_sgp_builder(selected_game, sgp_props)
-        st.write(sgp_result)
-
-    # AI-Optimized SGP Suggestion
-    if st.button("Suggest Best SGP"):
-        best_sgp = fetch_best_props(selected_game)
-        st.write("🔹 **Best Value SGP Picks** based on AI analysis:")
-        st.write(best_sgp)
+​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​
 
 # --- Section 3: Multi-Game Parlay (SGP+) ---
 elif menu_option == "SGP+":
