@@ -49,7 +49,7 @@ def get_games_by_date(date):
         st.error(f"❌ Error fetching scheduled games: {e}")
         print(f"❌ Error fetching scheduled games: {e}")
         return []
-​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​
+        
 @st.cache_data(ttl=3600)
 def fetch_best_props(selected_game, min_odds=-250, max_odds=100):
     """Fetch best player props for a selected game within a given odds range."""
