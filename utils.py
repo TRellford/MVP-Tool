@@ -1,69 +1,45 @@
-
 import requests
 import json
 import streamlit as st
-from nba_api.stats.endpoints import scoreboardv2, playergamelogs, playercareerstats, leaguegamefinder
-from nba_api.stats.static import players, teams
+from nba_api.stats.endpoints import playergamelogs, playercareerstats
+from nba_api.stats.static import players
 from datetime import datetime, timedelta
 
 # ✅ NBA API Base URL
 NBA_ODDS_API_URL = "https://api.the-odds-api.com/v4/sports/basketball_nba/odds"
+BALL_DONT_LIE_API_URL = "https://api.balldontlie.io/v1/games"
 
 # ✅ Cache Data for Efficiency
 @st.cache_data(ttl=3600)
 def get_games_by_date(date):
-    """Fetch only NBA games for a specific date from the NBA API."""
+    """Fetch only NBA games for a specific date from BallDontLie API."""
     if isinstance(date, str):
         date_str = date
     else:
         date_str = date.strftime("%Y-%m-%d")
 
     try:
-        scoreboard = scoreboardv2.ScoreboardV2(game_date=date_str)
-        data_frames = scoreboard.get_data_frames()
+        url = f"{BALL_DONT_LIE_API_URL}?start_date={date_str}&end_date={date_str}"
+        headers = {"Authorization": f"Bearer {st.secrets['ball_dont_lie_api_key']}"}  # Secure API key usage
+        response = requests.get(url, headers=headers)
         
-        # Debugging: Show the full list of data frames
-        st.write(f"📋 DataFrames returned for {date_str}: {len(data_frames)}")
-        if not data_frames:
-            st.warning(f"🚨 No data returned from API for {date_str}. Possibly no games scheduled.")
-            print(f"🚨 No data returned from API for {date_str}")
+        if response.status_code != 200:
+            st.error(f"❌ Error fetching games: {response.status_code}")
             return []
-
-        # Attempt to access the first DataFrame
-        games_data = data_frames[0]
-        st.write("🔍 GameHeader DataFrame:", games_data)
-
-        if games_data.empty:
-            st.warning(f"🚨 No games found for {date_str}.")
-            print(f"🚨 No games found for {date_str}")
-            return []
-
-        # Filter NBA games (LEAGUE_ID '00' for NBA)
-        nba_games = games_data[games_data["LEAGUE_ID"] == "00"]
-        if nba_games.empty:
-            st.warning(f"🚨 No NBA games (LEAGUE_ID '00') found for {date_str}.")
-            print(f"🚨 No NBA games found for {date_str}")
-            return []
-
+        
+        games_data = response.json().get("data", [])
         formatted_games = [
             {
-                "home_team": row["HOME_TEAM_NAME"],
-                "away_team": row["VISITOR_TEAM_NAME"],
-                "game_id": row["GAME_ID"],
-                "date": row["GAME_DATE"]
+                "home_team": game["home_team"]["full_name"],
+                "away_team": game["visitor_team"]["full_name"],
+                "game_id": game["id"],
+                "date": game["date"]
             }
-            for _, row in nba_games.iterrows()
+            for game in games_data
         ]
-        st.write(f"✅ Found {len(formatted_games)} NBA games for {date_str}")
         return formatted_games
-
-    except IndexError as e:
-        st.error(f"❌ IndexError fetching games for {date_str}: {e}")
-        print(f"❌ IndexError fetching games for {date_str}: {e}")
-        return []
     except Exception as e:
         st.error(f"❌ Unexpected error fetching games for {date_str}: {e}")
-        print(f"❌ Unexpected error fetching games for {date_str}: {e}")
         return []
 
 @st.cache_data(ttl=3600)
@@ -80,7 +56,6 @@ def fetch_best_props(selected_game, min_odds=-250, max_odds=100):
         return []
 
     props_data = response.json()
-
     best_props = []
     for bookmaker in props_data.get("bookmakers", []):
         for market in bookmaker.get("markets", []):
@@ -103,12 +78,11 @@ def fetch_game_predictions(selected_games):
 
     for game in selected_games:
         predictions[game] = {
-            "ML": "TBD",  # Replace with ML prediction logic
-            "Spread": "TBD",  # Replace with spread prediction logic
-            "O/U": "TBD",  # Replace with total points prediction logic
-            "confidence_score": 75  # Example confidence score
+            "ML": "TBD",
+            "Spread": "TBD",
+            "O/U": "TBD",
+            "confidence_score": 75
         }
-
     return predictions
 
 @st.cache_data(ttl=3600)
@@ -118,7 +92,6 @@ def fetch_sharp_money_trends(selected_games):
     
     for game in selected_games:
         trends[game] = "Sharp money is favoring one side. (Live Data Needed)"
-
     return trends
 
 @st.cache_data(ttl=3600)
@@ -135,7 +108,6 @@ def fetch_player_data(player_name):
         return None, None
 
     player_id = matching_players[0]["id"]
-
     career_stats = playercareerstats.PlayerCareerStats(player_id=player_id).get_data_frames()[0]
     game_logs = playergamelogs.PlayerGameLogs(player_id=player_id, season_nullable="2024-25").get_data_frames()[0]
 
