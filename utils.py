@@ -12,7 +12,6 @@ NBA_ODDS_API_URL = "https://api.the-odds-api.com/v4/sports/basketball_nba/odds"
 @st.cache_data(ttl=3600)
 def get_games_by_date(date):
     """Fetch only NBA games for a specific date from the NBA API."""
-    # Handle both string and datetime.date inputs
     if isinstance(date, str):
         date_str = date
     else:
@@ -20,18 +19,30 @@ def get_games_by_date(date):
 
     try:
         scoreboard = scoreboardv2.ScoreboardV2(game_date=date_str)
-        games_data = scoreboard.get_data_frames()[0]  # Get the main games dataframe
+        data_frames = scoreboard.get_data_frames()
+        
+        # Debugging: Show the full list of data frames
+        st.write(f"📋 DataFrames returned for {date_str}: {len(data_frames)}")
+        if not data_frames:
+            st.warning(f"🚨 No data returned from API for {date_str}. Possibly no games scheduled.")
+            print(f"🚨 No data returned from API for {date_str}")
+            return []
 
-        # Display raw data in Streamlit for debugging
-        st.write("🔍 Raw Game Data from API:", games_data)
+        # Attempt to access the first DataFrame
+        games_data = data_frames[0]
+        st.write("🔍 GameHeader DataFrame:", games_data)
 
         if games_data.empty:
             st.warning(f"🚨 No games found for {date_str}.")
-            print("🚨 No games found for this date.")
+            print(f"🚨 No games found for {date_str}")
             return []
 
-        # Filter only NBA games (league_id '00' for NBA)
+        # Filter NBA games (LEAGUE_ID '00' for NBA)
         nba_games = games_data[games_data["LEAGUE_ID"] == "00"]
+        if nba_games.empty:
+            st.warning(f"🚨 No NBA games (LEAGUE_ID '00') found for {date_str}.")
+            print(f"🚨 No NBA games found for {date_str}")
+            return []
 
         formatted_games = [
             {
@@ -42,13 +53,18 @@ def get_games_by_date(date):
             }
             for _, row in nba_games.iterrows()
         ]
-        
+        st.write(f"✅ Found {len(formatted_games)} NBA games for {date_str}")
         return formatted_games
 
-    except Exception as e:
-        st.error(f"❌ Error fetching scheduled games: {e}")
-        print(f"❌ Error fetching scheduled games: {e}")
+    except IndexError as e:
+        st.error(f"❌ IndexError fetching games for {date_str}: {e}")
+        print(f"❌ IndexError fetching games for {date_str}: {e}")
         return []
+    except Exception as e:
+        st.error(f"❌ Unexpected error fetching games for {date_str}: {e}")
+        print(f"❌ Unexpected error fetching games for {date_str}: {e}")
+        return []
+​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​
         
 @st.cache_data(ttl=3600)
 def fetch_best_props(selected_game, min_odds=-250, max_odds=100):
