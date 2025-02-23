@@ -1,7 +1,7 @@
 import requests
 import json
 import streamlit as st
-from nba_api.stats.endpoints import scoreboardv2, playergamelogs, playercareerstats
+from nba_api.stats.endpoints import scoreboardv2, playergamelogs, playercareerstats, leaguegamefinder
 from nba_api.stats.static import players, teams
 from datetime import datetime, timedelta
 
@@ -10,33 +10,40 @@ NBA_ODDS_API_URL = "https://api.the-odds-api.com/v4/sports/basketball_nba/odds"
 
 # ✅ Cache Data for Efficiency
 @st.cache_data(ttl=3600)
+from nba_api.stats.endpoints import leaguegamefinder
+import datetime
+
 def get_games_by_date(date):
-    """Fetch NBA games for a specific date from the NBA API."""
-    date_str = date.strftime("%Y-%m-%d")
-
+    """Fetch NBA games for a specific date in the 2024-25 season."""
     try:
-        scoreboard = scoreboardv2.ScoreboardV2(game_date=date_str)
-        games_data = scoreboard.get_data_frames()[0]
+        # Convert date to string format for filtering
+        date_str = date.strftime('%Y-%m-%d')
 
-        if games_data.empty:
-            return []
+        # Fetch all games
+        game_finder = leaguegamefinder.LeagueGameFinder()
+        games = game_finder.get_data_frames()[0]
 
-        formatted_games = [
-            {
-                "home_team": row["HOME_TEAM_NAME"],
-                "away_team": row["VISITOR_TEAM_NAME"],
+        # Ensure season is correctly filtered (2024-25 season ID format)
+        season_id = '22024'  # '2' + '2024' (format for season IDs in nba_api)
+
+        # Filter games by date and season
+        games = games[(games['SEASON_ID'] == season_id) & (games['GAME_DATE'] == date_str)]
+
+        # Extract relevant details
+        game_list = []
+        for _, row in games.iterrows():
+            game_list.append({
                 "game_id": row["GAME_ID"],
-                "game_time": row["GAME_STATUS_TEXT"]
-            }
-            for _, row in games_data.iterrows()
-        ]
-        
-        return formatted_games
+                "home_team": row["MATCHUP"].split(" ")[-1],  # Extract home team from matchup string
+                "away_team": row["MATCHUP"].split(" ")[0],   # Extract away team
+                "date": row["GAME_DATE"]
+            })
+
+        return game_list
 
     except Exception as e:
-        print(f"❌ Error fetching scheduled games: {e}")
+        print(f"Error fetching games: {e}")
         return []
-
 @st.cache_data(ttl=3600)
 def fetch_best_props(selected_game, min_odds=-250, max_odds=100):
     """Fetch best player props for a selected game within a given odds range."""
