@@ -12,13 +12,17 @@ CURRENT_SEASON = "2024-25"
 @st.cache_data(ttl=3600)
 def get_games_by_date(date):
     """Fetch NBA games for a specific date from the NBA API."""
-    date_str = date.strftime("%Y-%m-%d")
+    date_str = date.strftime("%m/%d/%Y")  # Adjust to correct format for NBA API
 
     try:
         scoreboard = scoreboardv2.ScoreboardV2(game_date=date_str)
-        games_data = scoreboard.get_data_frames()[0]  # Get the main games dataframe
+        games_data = scoreboard.get_data_frames()[0]  # Extract first DataFrame
+
+        # 🔍 Debugging: Print Raw API Response
+        print(f"🔍 RAW GAME DATA ({date_str}):", games_data)
 
         if games_data.empty:
+            print("🚨 No games found for this date.")
             return []
 
         formatted_games = [
@@ -29,6 +33,7 @@ def get_games_by_date(date):
                 "game_time": row["GAME_STATUS_TEXT"]
             }
             for _, row in games_data.iterrows()
+            if "HOME_TEAM_NAME" in row and "VISITOR_TEAM_NAME" in row  # Ensure expected keys exist
         ]
         
         return formatted_games
