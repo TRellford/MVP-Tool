@@ -1,10 +1,12 @@
 import streamlit as st
 import datetime
 import math
+import streamlit.components.v1 as components
+import unidecode
 from utils import (
     get_games_by_date, fetch_player_data, fetch_best_props,
     fetch_game_predictions, fetch_sgp_builder, fetch_sharp_money_trends,
-    fetch_all_players, get_nba_odds
+    fetch_all_players, get_player_stats, get_nba_odds
 )
 from nba_api.stats.static import teams
 
@@ -47,17 +49,17 @@ if menu_option == "Player Search":
 
     # 🔍 Player Search
     player_name = st.text_input("Enter Player Name, Last Name, or Nickname", key="player_search")
-    
+
     if player_name:
         selected_team = st.selectbox("Select Opponent for H2H Analysis (Optional)", ["None"] + [t["full_name"] for t in teams.get_teams()])
         selected_team = None if selected_team == "None" else selected_team
-        
+
         player_stats, h2h_stats = fetch_player_data(player_name, selected_team)
-         
+
         if player_stats:
             st.subheader(f"📈 {player_name} Stats - Last 5, 10, 15 Games")
             st.write(player_stats)
-        
+
         if h2h_stats:
             st.subheader(f"🏀 {player_name} vs {selected_team} (This Season)")
             st.write(h2h_stats)
@@ -123,7 +125,7 @@ elif menu_option == "Game Predictions":
                 st.warning("⚠️ No predictions available for selected games.")
             else:
                 for game, pred in predictions.items():
-                    confidence_score = pred.get("confidence_score", 50)
+                    confidence_score = pred.get("confidence_score", 50)  # Default 50 if not available
                     st.subheader(f"📊 {game} (Confidence: {confidence_score}%)")
                     st.progress(confidence_score / 100)
                     st.write(pred)
