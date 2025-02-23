@@ -158,3 +158,24 @@ def get_nba_odds(api_key):
     else:
         st.error(f"Error fetching NBA odds: {response.status_code}")
         return []
+import requests
+import json
+
+def fetch_nba_data(url, params=None):
+    """Generic function to fetch NBA data with error handling."""
+    try:
+        response = requests.get(url, params=params)
+        response.raise_for_status()  # Raises an error if the request fails
+
+        if response.status_code == 200:
+            try:
+                return response.json()  # ✅ Ensure we return valid JSON
+            except json.JSONDecodeError:
+                print("🚨 Error: Invalid JSON response received!")
+                return None
+        else:
+            print(f"🚨 API Error {response.status_code}: {response.text}")
+            return None
+    except requests.exceptions.RequestException as e:
+        print(f"❌ Request failed: {e}")
+        return None
