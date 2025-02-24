@@ -41,34 +41,80 @@ def get_nba_games(date):
 
 @st.cache_data(ttl=3600)
 def fetch_best_props(selected_game, min_odds=-250, max_odds=100):
+    """Fetch FanDuel player props for a specific game using the event odds endpoint."""
     if not selected_game.get("game_id"):
         st.error("🚨 Invalid game selected. No game ID found.")
         return []
+    
     game_date = selected_game["date"].split("T")[0] if "date" in selected_game else datetime.today().strftime("%Y-%m-%d")
+    home_team = selected_game["home_team"]
+    away_team = selected_game["away_team"]
+
+    # Step 1: Find the event ID
     response = requests.get(
         NBA_ODDS_API_URL,
         params={
             "apiKey": st.secrets["odds_api_key"],
             "regions": "us",
-            "markets": "player_points,player_rebounds,player_assists,player_threes",
+            "markets": "h2h",
             "date": game_date,
             "bookmakers": "fanduel"
         }
     )
     if response.status_code != 200:
-        st.error(f"❌ Error fetching FanDuel player props: {response.status_code} - {response.text}")
+        st.error(f"❌ Error fetching events: {response.status_code} - {response.text}")
         return []
-    props_data = response.json()
-    best_props = []
+    
+    events_data = response.json()
     event = next(
-        (e for e in props_data if e['home_team'] == selected_game['home_team'] and e['away_team'] == selected_game['away_team']),
+        (e for e in events_data if e['home_team'] == home_team and e['away_team'] == away_team),
         None
     )
-    if not event or not event.get("bookmakers"):
+    if not event:
+        st.error(f"🚨 No matching event found for {home_team} vs {away_team} on {game_date}.")
+        return []
+    
+    event_id = event["id"]
+
+    # Step 2: Fetch player props with a single market to test
+    event_url = f"{NBA_ODDS_API_URL.rsplit('/', 1)[0]}/events/{event_id}/odds"
+    markets_to_try = ["player_points"]  # Start with one market
+    best_props = []
+
+    response = requests.get(
+        event_url,
+        params={
+            "apiKey": st.secrets["odds_api_key"],
+            "regions": "us",
+            "markets": "player_points",  # Single market to test
+            "bookmakers": "fanduel"
+        }
+    )
+    if response.status_code != 200:
+        st.error(f"❌ Error fetching FanDuel player props: {response.status_code} - {response.text}")
+        # Debug: Fetch available markets with a featured market
+        debug_response = requests.get(
+            event_url,
+            params={
+                "apiKey": st.secrets["odds_api_key"],
+                "regions": "us",
+                "markets": "h2h",
+                "bookmakers": "fanduel"
+            }
+        )
+        if debug_response.status_code == 200:
+            debug_data = debug_response.json()
+            st.write("Available markets for this event:", debug_data.get("bookmakers", [{}])[0].get("markets", []))
+        return []
+    
+    props_data = response.json()
+    if not props_data.get("bookmakers"):
         return ["No FanDuel props found for this game."]
-    fanduel = next((b for b in event["bookmakers"] if b["key"] == "fanduel"), None)
+    
+    fanduel = next((b for b in props_data["bookmakers"] if b["key"] == "fanduel"), None)
     if not fanduel:
         return ["FanDuel odds not available for this game."]
+    
     for market in fanduel.get("markets", []):
         for outcome in market.get("outcomes", []):
             price = outcome.get("price", 0)
@@ -81,8 +127,37 @@ def fetch_best_props(selected_game, min_odds=-250, max_odds=100):
                     "odds": price,
                     "insight": f"{outcome['name']} prop from FanDuel"
                 })
+    
+    # If successful, try additional markets one by one (optional)
+    additional_markets = ["player_rebounds", "player_assists", "player_threes"]
+    for market in additional_markets:
+        response = requests.get(
+            event_url,
+            params={
+                "apiKey": st.secrets["odds_api_key"],
+                "regions": "us",
+                "markets": market,
+                "bookmakers": "fanduel"
+            }
+        )
+        if response.status_code == 200:
+            props_data = response.json()
+            fanduel = next((b for b in props_data["bookmakers"] if b["key"] == "fanduel"), None)
+            if fanduel:
+                for market_data in fanduel.get("markets", []):
+                    for outcome in market_data.get("outcomes", []):
+                        price = outcome.get("price", 0)
+                        if min_odds <= price <= max_odds:
+                            prop_name = market_data["key"].replace("player_", "").replace("_", " ").title()
+                            best_props.append({
+                                "player": outcome["name"],
+                                "prop": prop_name,
+                                "line": outcome.get("point", "N/A"),
+                                "odds": price,
+                                "insight": f"{outcome['name']} prop from FanDuel"
+                            })
+    
     return best_props if best_props else ["No suitable FanDuel props found."]
-
 @st.cache_data(ttl=3600)
 def fetch_game_predictions(selected_games):
     response = requests.get(
