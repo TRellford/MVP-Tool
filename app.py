@@ -98,4 +98,78 @@ elif menu_option == "Same Game Parlay":
         st.warning("🚨 No NBA games found for the selected date.")
 
 # SGP+
-elif menu
+elif menu_option == "SGP+":
+    st.header("🔥 Multi-Game Parlay (SGP+) - Select 2 to 12 Games")
+
+    today_games = get_nba_games(datetime.date.today())
+    tomorrow_games = get_nba_games(datetime.date.today() + datetime.timedelta(days=1))
+    all_games = today_games + tomorrow_games
+    game_labels = [f"{game['home_team']} vs {game['away_team']}" for game in all_games]
+    selected_labels = st.multiselect("Select Games (Min: 2, Max: 12):", game_labels)
+    selected_games = [g for g in all_games if f"{g['home_team']} vs {g['away_team']}" in selected_labels]
+
+    if len(selected_games) < 2:
+        st.warning("⚠️ You must select at least 2 games.")
+    elif len(selected_games) > 12:
+        st.warning("⚠️ You cannot select more than 12 games.")
+    else:
+        max_props_per_game = math.floor(24 / len(selected_games))
+        props_per_game = st.slider(f"Choose Props Per Game (Max {max_props_per_game}):", 1, max_props_per_game)
+        
+        # Risk level selection with colors
+        risk_levels = [
+            ("Very Safe", "blue", (-450, -300)),
+            ("Safe", "green", (-299, -200)),
+            ("Moderate Risk", "yellow", (-199, 100)),
+            ("High Risk", "orange", (101, 250)),
+            ("Very High Risk", "red", (251, float('inf')))
+        ]
+        risk_options = [f"{level} :large_{color}_circle:" for level, color, _ in risk_levels]
+        risk_index = st.selectbox("Select Risk Level:", risk_options, key="sgp_plus_risk_level")
+        selected_risk = next((r for r, c, _ in risk_levels if f"{r} :large_{color}_circle:" == risk_index), risk_levels[0])
+        risk_level, color, (min_odds, max_odds) = selected_risk
+        
+        total_props = len(selected_games) * props_per_game
+        st.write(f"✅ **Total Props Selected: {total_props} (Max: 24)**")
+
+        if total_props > 24:
+            st.error(f"🚨 Too many props selected! Max allowed: 24.")
+        else:
+            if st.button("Generate SGP+ Prediction"):
+                num_props_total = props_per_game * len(selected_games)
+                sgp_plus_result = fetch_sgp_builder(selected_games, num_props=num_props_total, min_odds=min_odds, max_odds=max_odds, multi_game=True)
+                st.write(sgp_plus_result)
+
+# Game Predictions
+elif menu_option == "Game Predictions":
+    st.header("📈 Moneyline, Spread & Over/Under Predictions")
+
+    today_games = get_nba_games(datetime.date.today())
+    tomorrow_games = get_nba_games(datetime.date.today() + datetime.timedelta(days=1))
+    all_games = today_games + tomorrow_games
+    game_labels = [f"{game['home_team']} vs {game['away_team']}" for game in all_games]
+    selected_labels = st.multiselect("Select Games for Predictions:", game_labels)
+    selected_games = [g for g in all_games if f"{g['home_team']} vs {g['away_team']}" in selected_labels]
+
+    if len(selected_games) == 0:
+        st.warning("⚠️ Please select at least one game.")
+    else:
+        if st.button("Get Game Predictions"):
+            predictions = fetch_game_predictions(selected_games)
+            if not predictions:
+                st.warning("⚠️ No predictions available for selected games.")
+            else:
+                for game_label, pred in predictions.items():
+                    confidence_score = pred.get("confidence_score", 50)
+                    st.subheader(f"📊 {game_label} (Confidence: {confidence_score}%)")
+                    st.progress(confidence_score / 100)
+                    st.write(f"Moneyline: {pred['ML']}")
+                    st.write(f"Spread: {pred['Spread']}")
+                    st.write(f"O/U: {pred['O/U']}")
+
+    st.header("💰 Sharp Money & Line Movement Tracker")
+    if len(selected_games) > 0 and st.button("Check Betting Trends"):
+        sharp_trends = fetch_sharp_money_trends(selected_games)
+        for game_label, trend in sharp_trends.items():
+            st.subheader(f"📉 {game_label}")
+            st.write(trend)
