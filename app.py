@@ -87,7 +87,7 @@ elif menu_option == "Same Game Parlay":
         ]
         risk_options = [f"{level} :large_{color}_circle:" for level, color, _ in risk_levels]
         risk_index = st.selectbox("Select Risk Level:", risk_options, key="sgp_risk_level")
-        selected_risk = next((r for r, c, _ in risk_levels if f"{r} :large_{color}_circle:" == risk_index), risk_levels[0])
+        selected_risk = next((r for r, c, _ in risk_levels if f"{r} :large_{c}_circle:" == risk_index), risk_levels[0])
         risk_level, color, (min_odds, max_odds) = selected_risk
         
         if st.button("Generate SGP Prediction"):
@@ -126,8 +126,8 @@ elif menu_option == "SGP+":
         ]
         risk_options = [f"{level} :large_{color}_circle:" for level, color, _ in risk_levels]
         risk_index = st.selectbox("Select Risk Level:", risk_options, key="sgp_plus_risk_level")
-        selected_risk = next((r for r, c, _ in risk_levels if f"{r} :large_{color}_circle:" == risk_index), risk_levels[0])
-        risk_level, color, (min_odds, max_odds) = selected_risk
+        selected_risk = next((r for r, c, _ in risk_levels if f"{r} :large_{c}_circle:" == risk_index), risk_levels[0])
+        risk_level, color, (min_ods, max_odds) = selected_risk
         
         total_props = len(selected_games) * props_per_game
         st.write(f"✅ **Total Props Selected: {total_props} (Max: 24)**")
