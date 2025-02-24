@@ -12,20 +12,32 @@ BALL_DONT_LIE_API_URL = "https://api.balldontlie.io/v1/games"
 # ✅ Cache Data for Efficiency
 @st.cache_data(ttl=3600)
 def get_nba_games(date):
-    """Fetch only NBA games for a specific date from BallDontLie API."""
+    """Fetch NBA games from BallDontLie API for a specific date."""
     if isinstance(date, str):
         date_str = date
     else:
         date_str = date.strftime("%Y-%m-%d")
+
     try:
-        url = f"{BALL_DONT_LIE_API_URL}?start_date={date_str}&end_date={date_str}"
-        headers = {"Authorization": f"Bearer {st.secrets['ball_dont_lie_api_key']}"}  # Secure API key usage
+        # Retrieve API key and ensure it's correctly formatted
+        api_key = st.secrets.get("ball_dont_lie_api_key", "").strip()  # Ensures no spaces or missing key
+        if not api_key:
+            st.error("🚨 API Key is missing from Streamlit secrets.")
+            return []
+
+        url = f"https://api.balldontlie.io/v1/games?start_date={date_str}&end_date={date_str}"
+        headers = {"Authorization": f"Bearer {api_key}"}
+
         response = requests.get(url, headers=headers)
         
+        if response.status_code == 401:
+            st.error("❌ Unauthorized (401). Your API key might be incorrect or require a paid plan.")
+            return []
+
         if response.status_code != 200:
             st.error(f"❌ Error fetching games: {response.status_code}")
             return []
-        
+
         games_data = response.json().get("data", [])
         formatted_games = [
             {
@@ -37,9 +49,9 @@ def get_nba_games(date):
             for game in games_data
         ]
         return formatted_games
+
     except Exception as e:
-        st.error(f"❌ Unexpected error fetching games for {date_str}: {e}")
-        st.write(f"🔑 API Key: {st.secrets.get('ball_dont_lie_api_key', 'NOT FOUND')}")
+        st.error(f"❌ Unexpected error fetching games: {e}")
         return []
 
 @st.cache_data(ttl=3600)
