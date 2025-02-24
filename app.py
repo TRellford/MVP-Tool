@@ -7,40 +7,11 @@ import unidecode
 from utils import (
     fetch_player_data, fetch_best_props,
     fetch_game_predictions, fetch_sgp_builder, fetch_sharp_money_trends,
-    fetch_all_players, fetch_best_props
+    fetch_all_players, fetch_best_props, get_nba_games
 )
 from nba_api.stats.static import teams
 
 st.set_page_config(page_title="NBA Betting AI", layout="wide")
-
-# Function to fetch NBA games from BallDontLie API
-def get_games_by_date(date):
-    """Fetch NBA games from BallDontLie API for a specific date."""
-    try:
-        date_str = date.strftime('%Y-%m-%d')
-        url = f"https://api.balldontlie.io/v1/games?start_date={date_str}&end_date={date_str}"
-        headers = {"Authorization": f"Bearer {st.secrets['ball_dont_lie_api_key']}"}  # Using Streamlit secrets
-        response = requests.get(url, headers=headers)
-        
-        if response.status_code == 200:
-            data = response.json()
-            games = data.get("data", [])
-            
-            game_list = []
-            for game in games:
-                game_list.append({
-                    "game_id": game["id"],
-                    "home_team": game["home_team"]["full_name"],
-                    "away_team": game["visitor_team"]["full_name"],
-                    "date": game["date"]
-                })
-            return game_list
-        else:
-            st.error(f"Error fetching games: {response.status_code}")
-            return []
-    except Exception as e:
-        st.error(f"Error fetching NBA games: {e}")
-        return []
 
 # --- Sidebar Navigation ---
 st.sidebar.title("🔍 Navigation")
@@ -91,7 +62,7 @@ elif menu_option == "Same Game Parlay":
     base_date = datetime.date.today()
     game_date = base_date if date_option == "Today's Games" else base_date + datetime.timedelta(days=1)
     
-    available_games = get_games_by_date(game_date)
+    available_games = get_nba_games(game_date)
     
     st.write(f"📅 Fetching games for: {game_date.strftime('%Y-%m-%d')}")
     st.write(f"🎮 Number of games found: {len(available_games)}")
@@ -103,3 +74,54 @@ elif menu_option == "Same Game Parlay":
         st.write(f"🎯 Selected Game: {selected_game}")
     else:
         st.warning("🚨 No NBA games found for the selected date. This could be due to the All-Star break, off-season, or API issues.")
+
+# --- Section 3: Multi-Game Parlay (SGP+) ---
+elif menu_option == "SGP+":
+    st.header("🔥 Multi-Game Parlay (SGP+) - Select 2 to 12 Games")
+
+    selected_games = st.multiselect("Select Games (Min: 2, Max: 12):", get_nba_games(datetime.datetime.today()) + get_nba_games(datetime.datetime.today() + datetime.timedelta(days=1)))
+
+    if len(selected_games) < 2:
+        st.warning("⚠️ You must select at least 2 games.")
+    elif len(selected_games) > 12:
+        st.warning("⚠️ You cannot select more than 12 games.")
+    else:
+        max_props_per_game = math.floor(24 / len(selected_games))
+        props_per_game = st.slider(f"Choose Props Per Game (Max {max_props_per_game}):", 2, max_props_per_game)
+
+        total_props = len(selected_games) * props_per_game
+        st.write(f"✅ **Total Props Selected: {total_props} (Max: 24)**")
+
+        if total_props > 24:
+            st.error(f"🚨 Too many props selected! Max allowed: 24. You selected {total_props}. Reduce props per game.")
+        else:
+            if st.button("Generate SGP+"):
+                sgp_plus_result = fetch_sgp_builder(selected_games, props_per_game, multi_game=True)
+                st.write(sgp_plus_result)
+
+# --- Section 4: Game Predictions ---
+elif menu_option == "Game Predictions":
+    st.header("📈 Moneyline, Spread & Over/Under Predictions")
+
+    selected_games = st.multiselect("Select Games for Predictions:", get_nba_games(datetime.datetime.today()) + get_nba_games(datetime.datetime.today() + datetime.timedelta(days=1)))
+
+    if len(selected_games) == 0:
+        st.warning("⚠️ Please select at least one game.")
+    else:
+        if st.button("Get Game Predictions"):
+            predictions = fetch_game_predictions(selected_games)
+
+            if not predictions:
+                st.warning("⚠️ No predictions available for selected games.")
+            else:
+                for game, pred in predictions.items():
+                    confidence_score = pred.get("confidence_score", 50)  # Default 50 if not available
+                    st.subheader(f"📊 {game} (Confidence: {confidence_score}%)")
+                    st.progress(confidence_score / 100)
+                    st.write(pred)
+
+    # --- Sharp Money & Line Movement Tracker ---
+    st.header("💰 Sharp Money & Line Movement Tracker")
+    if len(selected_games) > 0 and st.button("Check Betting Trends"):
+        sharp_trends = fetch_sharp_money_trends(selected_games)
+        st.write(sharp_trends)
