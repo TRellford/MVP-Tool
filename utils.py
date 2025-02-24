@@ -18,7 +18,7 @@ def get_nba_games(date):
 
     try:
         url = f"{BALL_DONT_LIE_API_URL}/games"
-        headers = {"Authorization": st.secrets["balldontlie_api_key"]}  # Use Streamlit secrets
+        headers = {"Authorization": st.secrets["balldontlie_api_key"]}
         params = {"dates[]": date_str}
 
         response = requests.get(url, headers=headers, params=params)
@@ -91,66 +91,138 @@ def fetch_best_props(selected_game, min_odds=-250, max_odds=100):
 
 @st.cache_data(ttl=3600)
 def fetch_game_predictions(selected_games):
-    """Fetch AI-based game predictions using live data."""
+    """Fetch live game predictions based on odds from The Odds API."""
+    response = requests.get(
+        NBA_ODDS_API_URL,
+        params={
+            "apiKey": st.secrets["odds_api_key"],
+            "regions": "us",
+            "markets": "h2h,spreads,totals"  # Moneyline, Spread, Over/Under
+        }
+    )
+    if response.status_code != 200:
+        st.error(f"❌ Error fetching odds for predictions: {response.status_code}")
+        return {}
+
+    odds_data = response.json()
     predictions = {}
+    
     for game in selected_games:
         game_key = f"{game['home_team']} vs {game['away_team']}"
+        event = next(
+            (e for e in odds_data if e['home_team'] == game['home_team'] and e['away_team'] == game['away_team']),
+            None
+        )
+        if not event:
+            predictions[game_key] = {"ML": "N/A", "Spread": "N/A", "O/U": "N/A", "confidence_score": 0}
+            continue
+
+        # Extract odds from the first bookmaker (e.g., average or best odds could be implemented)
+        bookmaker = event.get("bookmakers", [])[0] if event.get("bookmakers") else None
+        if not bookmaker:
+            predictions[game_key] = {"ML": "N/A", "Spread": "N/A", "O/U": "N/A", "confidence_score": 0}
+            continue
+
+        ml_odds = next((m for m in bookmaker["markets"] if m["key"] == "h2h"), None)
+        spread_odds = next((m for m in bookmaker["markets"] if m["key"] == "spreads"), None)
+        ou_odds = next((m for m in bookmaker["markets"] if m["key"] == "totals"), None)
+
+        # Moneyline Prediction
+        ml = f"{ml_odds['outcomes'][0]['name']} ({ml_odds['outcomes'][0]['price']})" if ml_odds else "N/A"
+        # Spread Prediction
+        spread = f"{spread_odds['outcomes'][0]['point']} ({spread_odds['outcomes'][0]['price']})" if spread_odds else "N/A"
+        # Over/Under Prediction
+        ou = f"{ou_odds['outcomes'][0]['point']} ({ou_odds['outcomes'][0]['price']})" if ou_odds else "N/A"
+        # Confidence Score (simplified: based on odds favorability)
+        confidence = min(max(abs(ml_odds['outcomes'][0]['price']) / 100 if ml_odds else 50, 50), 90)
+
         predictions[game_key] = {
-            "ML": "TBD",
-            "Spread": "TBD",
-            "O/U": "TBD",
-            "confidence_score": 75
+            "ML": ml,
+            "Spread": spread,
+            "O/U": ou,
+            "confidence_score": confidence
         }
+    
     return predictions
 
 @st.cache_data(ttl=3600)
 def fetch_sharp_money_trends(selected_games):
-    """Fetch betting trends based on sharp money movement."""
+    """Fetch betting trends based on line movement from The Odds API."""
+    response = requests.get(
+        NBA_ODDS_API_URL,
+        params={
+            "apiKey": st.secrets["odds_api_key"],
+            "regions": "us",
+            "markets": "h2h,spreads,totals"
+        }
+    )
+    if response.status_code != 200:
+        st.error(f"❌ Error fetching odds for trends: {response.status_code}")
+        return {}
+
+    odds_data = response.json()
     trends = {}
+    
     for game in selected_games:
         game_key = f"{game['home_team']} vs {game['away_team']}"
-        trends[game_key] = "Sharp money is favoring one side. (Live Data Needed)"
+        event = next(
+            (e for e in odds_data if e['home_team'] == game['home_team'] and e['away_team'] == game['away_team']),
+            None
+        )
+        if not event or not event.get("bookmakers"):
+            trends[game_key] = "No line movement data available."
+            continue
+
+        # Analyze line movement across bookmakers
+        h2h_markets = [b["markets"][0] for b in event["bookmakers"] if b["markets"] and b["markets"][0]["key"] == "h2h"]
+        if not h2h_markets:
+            trends[game_key] = "No moneyline data available."
+            continue
+
+        opening_odds = h2h_markets[0]["outcomes"][0]["price"]  # First bookmaker’s opening odds
+        current_odds = max(m["outcomes"][0]["price"] for m in h2h_markets)  # Highest current odds
+        movement = current_odds - opening_odds
+
+        if movement > 0:
+            trend = f"Sharp money moving toward {h2h_markets[0]['outcomes'][0]['name']} (+{movement} shift)"
+        elif movement < 0:
+            trend = f"Sharp money moving toward {h2h_markets[0]['outcomes'][1]['name']} ({movement} shift)"
+        else:
+            trend = "No significant line movement detected."
+        
+        trends[game_key] = trend
+    
     return trends
 
 @st.cache_data(ttl=3600)
 def fetch_sgp_builder(selected_game, sgp_props, multi_game=False):
-    """Generate a Same Game Parlay using live data."""
+    """Generate a Same Game Parlay using live props data."""
+    if multi_game:
+        # For multi-game, sgp_props is an integer (props per game)
+        total_props = []
+        for game in selected_game:  # selected_game is a list in multi-game mode
+            props = fetch_best_props(game)[:sgp_props]  # Limit to props_per_game
+            total_props.extend(props)
+    else:
+        # Single-game mode
+        total_props = fetch_best_props(selected_game)[:sgp_props] if isinstance(sgp_props, int) else sgp_props
+
+    if not total_props or isinstance(total_props[0], str):  # Check if props fetch failed
+        return "No valid props available for SGP."
+
+    # Calculate combined odds (simplified: multiply decimal odds)
+    combined_odds = 1.0
+    for prop in total_props:
+        odds = prop["odds"]
+        decimal_odds = (odds / 100 + 1) if odds > 0 else (1 + 100 / abs(odds))
+        combined_odds *= decimal_odds
+
+    # Convert back to American odds
+    american_odds = int((combined_odds - 1) * 100) if combined_odds > 2 else int(-100 / (combined_odds - 1))
+
     game_label = f"{selected_game['home_team']} vs {selected_game['away_team']}" if not multi_game else "Multiple Games"
-    return f"SGP Generated for {game_label} with selected props: {sgp_props}"
+    prop_details = "\n".join([f"{p['player']} - {p['prop']} ({p['line']}): {p['odds']}" for p in total_props])
+    return f"SGP for {game_label}:\n{prop_details}\nCombined Odds: {american_odds:+d}"
 
 @st.cache_data(ttl=3600)
 def fetch_player_data(player_name, selected_team=None):
-    """Fetch player stats and H2H stats from NBA API."""
-    matching_players = [p for p in players.get_players() if p["full_name"].lower() == player_name.lower()]
-    
-    if not matching_players:
-        return None, None
-
-    player_id = matching_players[0]["id"]
-    career_stats = playercareerstats.PlayerCareerStats(player_id=player_id).get_data_frames()[0]
-    game_logs = playergamelogs.PlayerGameLogs(player_id=player_id, season_nullable="2024-25").get_data_frames()[0]
-
-    last_5 = game_logs.head(5).to_dict(orient="records")
-    last_10 = game_logs.head(10).to_dict(orient="records")
-    last_15 = game_logs.head(15).to_dict(orient="records")
-
-    player_stats = {
-        "Career Stats": career_stats.to_dict(orient="records"),
-        "Last 5 Games": last_5,
-        "Last 10 Games": last_10,
-        "Last 15 Games": last_15
-    }
-    
-    h2h_stats = None
-    if selected_team:
-        team_abbr = next((t['abbreviation'] for t in teams.get_teams() if t['full_name'] == selected_team), None)
-        if team_abbr:
-            h2h_games = game_logs[game_logs['MATCHUP'].str.contains(team_abbr)]
-            h2h_stats = h2h_games.to_dict(orient="records") if not h2h_games.empty else None
-
-    return player_stats, h2h_stats
-
-@st.cache_data(ttl=3600)
-def fetch_all_players():
-    """Fetch all active NBA players."""
-    return [p["full_name"] for p in players.get_active_players()]
