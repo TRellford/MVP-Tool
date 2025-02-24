@@ -1,61 +1,62 @@
 import streamlit as st
 import datetime
 import math
-import requests
-import streamlit.components.v1 as components
-import unidecode
 from utils import (
     fetch_player_data, fetch_best_props,
     fetch_game_predictions, fetch_sgp_builder, fetch_sharp_money_trends,
-    fetch_all_players, fetch_best_props, get_nba_games
+    fetch_all_players, get_nba_games
 )
 from nba_api.stats.static import teams
 
 st.set_page_config(page_title="NBA Betting AI", layout="wide")
 
-# --- Sidebar Navigation ---
+# Sidebar Navigation
 st.sidebar.title("🔍 Navigation")
 menu_option = st.sidebar.selectbox("Select a Section:", ["Player Search", "Same Game Parlay", "SGP+", "Game Predictions"])
 
-# --- Section 1: Player Search ---
-# --- Section 1: Player Search ---
+# Player Search
 if menu_option == "Player Search":
     st.header("🔍 Player Search & Prop Analysis")
 
     all_players = fetch_all_players()
     last_name_mapping = {p.split()[-1].lower(): p for p in all_players}
-
     nickname_mapping = {
-        "Steph Curry": "Stephen Curry",
-        "Bron": "LeBron James",
-        "KD": "Kevin Durant",
-        "AD": "Anthony Davis",
-        "CP3": "Chris Paul",
-        "Joker": "Nikola Jokic",
-        "The Beard": "James Harden",
-        "Dame": "Damian Lillard",
-        "Klay": "Klay Thompson",
-        "Tatum": "Jayson Tatum",
-        "Giannis": "Giannis Antetokounmpo"
+        "steph curry": "Stephen Curry",
+        "bron": "LeBron James",
+        "kd": "Kevin Durant",
+        "ad": "Anthony Davis",
+        "cp3": "Chris Paul",
+        "joker": "Nikola Jokic",
+        "the beard": "James Harden",
+        "dame": "Damian Lillard",
+        "klay": "Klay Thompson",
+        "tatum": "Jayson Tatum",
+        "giannis": "Giannis Antetokounmpo"
     }
 
-    # Get player name input
     player_name = st.text_input("Enter Player Name, Last Name, or Nickname", key="player_search")
-
-    # Only run the search if a name is entered
     if player_name:
+        player_name_lower = player_name.lower()
+        if player_name_lower in nickname_mapping:
+            player_name = nickname_mapping[player_name_lower]
+        elif player_name_lower in last_name_mapping:
+            player_name = last_name_mapping[player_name_lower]
+
         selected_team = st.selectbox("Select Opponent for H2H Analysis (Optional)", ["None"] + [t["full_name"] for t in teams.get_teams()])
         selected_team = None if selected_team == "None" else selected_team
 
-        # ✅ Call fetch_player_data() to get player stats
         player_stats, h2h_stats = fetch_player_data(player_name, selected_team)
 
         if player_stats:
             st.subheader(f"📈 {player_name} Stats - Last 5, 10, 15 Games")
             st.write(player_stats)
+            if h2h_stats:
+                st.subheader(f"🤼 H2H Stats vs {selected_team}")
+                st.write(h2h_stats)
         else:
             st.error(f"🚨 No stats found for {player_name}. Check name spelling or API availability.")
-# --- Section 2: Same Game Parlay (SGP) ---
+
+# Same Game Parlay
 elif menu_option == "Same Game Parlay":
     st.header("🎯 Same Game Parlay (SGP) - One Game Only")
 
@@ -69,18 +70,23 @@ elif menu_option == "Same Game Parlay":
     st.write(f"🎮 Number of games found: {len(available_games)}")
 
     if available_games:
-        game_options = {f"{game['home_team']} vs {game['away_team']}": game for game in available_games}
-        selected_game_label = st.selectbox("Select a Game:", list(game_options.keys()), key="sgp_game")
-        selected_game = game_options[selected_game_label]
-        st.write(f"🎯 Selected Game: {selected_game}")
+        game_labels = [f"{game['home_team']} vs {game['away_team']}" for game in available_games]
+        selected_game_label = st.selectbox("Select a Game:", game_labels, key="sgp_game")
+        selected_game = next(g for g in available_games if f"{g['home_team']} vs {g['away_team']}" == selected_game_label)
+        st.write(f"🎯 Selected Game: {selected_game_label}")
     else:
-        st.warning("🚨 No NBA games found for the selected date. This could be due to the All-Star break, off-season, or API issues.")
+        st.warning("🚨 No NBA games found for the selected date.")
 
-# --- Section 3: Multi-Game Parlay (SGP+) ---
+# SGP+
 elif menu_option == "SGP+":
     st.header("🔥 Multi-Game Parlay (SGP+) - Select 2 to 12 Games")
 
-    selected_games = st.multiselect("Select Games (Min: 2, Max: 12):", get_nba_games(datetime.datetime.today()) + get_nba_games(datetime.datetime.today() + datetime.timedelta(days=1)))
+    today_games = get_nba_games(datetime.date.today())
+    tomorrow_games = get_nba_games(datetime.date.today() + datetime.timedelta(days=1))
+    all_games = today_games + tomorrow_games
+    game_labels = [f"{game['home_team']} vs {game['away_team']}" for game in all_games]
+    selected_labels = st.multiselect("Select Games (Min: 2, Max: 12):", game_labels)
+    selected_games = [g for g in all_games if f"{g['home_team']} vs {g['away_team']}" in selected_labels]
 
     if len(selected_games) < 2:
         st.warning("⚠️ You must select at least 2 games.")
@@ -94,34 +100,37 @@ elif menu_option == "SGP+":
         st.write(f"✅ **Total Props Selected: {total_props} (Max: 24)**")
 
         if total_props > 24:
-            st.error(f"🚨 Too many props selected! Max allowed: 24. You selected {total_props}. Reduce props per game.")
+            st.error(f"🚨 Too many props selected! Max allowed: 24.")
         else:
             if st.button("Generate SGP+"):
                 sgp_plus_result = fetch_sgp_builder(selected_games, props_per_game, multi_game=True)
                 st.write(sgp_plus_result)
 
-# --- Section 4: Game Predictions ---
+# Game Predictions
 elif menu_option == "Game Predictions":
     st.header("📈 Moneyline, Spread & Over/Under Predictions")
 
-    selected_games = st.multiselect("Select Games for Predictions:", get_nba_games(datetime.datetime.today()) + get_nba_games(datetime.datetime.today() + datetime.timedelta(days=1)))
+    today_games = get_nba_games(datetime.date.today())
+    tomorrow_games = get_nba_games(datetime.date.today() + datetime.timedelta(days=1))
+    all_games = today_games + tomorrow_games
+    game_labels = [f"{game['home_team']} vs {game['away_team']}" for game in all_games]
+    selected_labels = st.multiselect("Select Games for Predictions:", game_labels)
+    selected_games = [g for g in all_games if f"{g['home_team']} vs {g['away_team']}" in selected_labels]
 
     if len(selected_games) == 0:
         st.warning("⚠️ Please select at least one game.")
     else:
         if st.button("Get Game Predictions"):
             predictions = fetch_game_predictions(selected_games)
-
             if not predictions:
                 st.warning("⚠️ No predictions available for selected games.")
             else:
-                for game, pred in predictions.items():
-                    confidence_score = pred.get("confidence_score", 50)  # Default 50 if not available
-                    st.subheader(f"📊 {game} (Confidence: {confidence_score}%)")
+                for game_label, pred in predictions.items():
+                    confidence_score = pred.get("confidence_score", 50)
+                    st.subheader(f"📊 {game_label} (Confidence: {confidence_score}%)")
                     st.progress(confidence_score / 100)
                     st.write(pred)
 
-    # --- Sharp Money & Line Movement Tracker ---
     st.header("💰 Sharp Money & Line Movement Tracker")
     if len(selected_games) > 0 and st.button("Check Betting Trends"):
         sharp_trends = fetch_sharp_money_trends(selected_games)
