@@ -40,19 +40,9 @@ if menu_option == "Player Search":
 
     player_name = st.text_input("Enter Player Name, Last Name, or Nickname", key="player_search")
 
-    if player_name:
-        selected_team = st.selectbox("Select Opponent for H2H Analysis (Optional)", ["None"] + [t["full_name"] for t in teams.get_teams()])
-        selected_team = None if selected_team == "None" else selected_team
-
-        player_stats, h2h_stats = fetch_player_data(player_name, selected_team)
-
-        if player_stats:
+    if player_stats:
             st.subheader(f"📈 {player_name} Stats - Last 5, 10, 15 Games")
             st.write(player_stats)
-
-        if h2h_stats:
-            st.subheader(f"🏀 {player_name} vs {selected_team} (This Season)")
-            st.write(h2h_stats)
 
 # --- Section 2: Same Game Parlay (SGP) ---
 elif menu_option == "Same Game Parlay":
