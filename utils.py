@@ -53,16 +53,20 @@ def fetch_best_props(selected_game, min_odds=-250, max_odds=100):
         st.error("🚨 Invalid game selected. No game ID found.")
         return []
 
+    # Format date to match API requirements (e.g., YYYY-MM-DD)
+    game_date = selected_game["date"].split("T")[0] if "date" in selected_game else datetime.today().strftime("%Y-%m-%d")
+
     response = requests.get(
         NBA_ODDS_API_URL,
         params={
             "apiKey": st.secrets["odds_api_key"],
             "regions": "us",
-            "markets": "player_points,player_rebounds,player_assists"
+            "markets": "player_points,player_rebounds,player_assists",  # Comma-separated, no spaces
+            "date": game_date  # Add date filter to ensure relevance
         }
     )
     if response.status_code != 200:
-        st.error(f"❌ Error fetching player props: {response.status_code}")
+        st.error(f"❌ Error fetching player props: {response.status_code} - {response.text}")
         return []
 
     props_data = response.json()
@@ -88,7 +92,6 @@ def fetch_best_props(selected_game, min_odds=-250, max_odds=100):
                     })
 
     return best_props if best_props else ["No suitable props found."]
-
 @st.cache_data(ttl=3600)
 def fetch_game_predictions(selected_games):
     """Fetch enhanced game predictions using averaged odds and player stats."""
@@ -106,6 +109,7 @@ def fetch_game_predictions(selected_games):
 
     odds_data = response.json()
     predictions = {}
+    all_teams = teams.get_teams()  # Fetch team data for ID mapping
     
     for game in selected_games:
         game_key = f"{game['home_team']} vs {game['away_team']}"
@@ -120,9 +124,8 @@ def fetch_game_predictions(selected_games):
         # Average odds across bookmakers
         h2h_odds = [m for b in event["bookmakers"] for m in b["markets"] if m["key"] == "h2h"]
         spread_odds = [m for b in event["bookmakers"] for m in b["markets"] if m["key"] == "spreads"]
-        ou_odds = [m for b in event["bookmakers"] for m in b["markets"] if m["key"] == "totals"]
+        ou_odds = [m for b in event["bookmakers"] for m["markets"] if m["key"] == "totals"]
 
-        # Moneyline: Average odds and implied probability
         if h2h_odds:
             home_odds = [o["price"] for m in h2h_odds for o in m["outcomes"] if o["name"] == game["home_team"]]
             away_odds = [o["price"] for m in h2h_odds for o in m["outcomes"] if o["name"] == game["away_team"]]
@@ -131,11 +134,10 @@ def fetch_game_predictions(selected_games):
             home_prob = 1 / (1 + (avg_home_odds / 100 if avg_home_odds > 0 else 100 / abs(avg_home_odds))) if avg_home_odds else 0.5
             away_prob = 1 / (1 + (avg_away_odds / 100 if avg_away_odds > 0 else 100 / abs(avg_away_odds))) if avg_away_odds else 0.5
             ml = f"{game['home_team']} ({int(avg_home_odds)})" if home_prob > away_prob else f"{game['away_team']} ({int(avg_away_odds)})"
-            ml_confidence = abs(home_prob - away_prob) * 100  # Difference in probability as confidence
+            ml_confidence = abs(home_prob - away_prob) * 100
         else:
             ml, ml_confidence = "N/A", 0
 
-        # Spread: Average spread and odds
         if spread_odds:
             home_spreads = [(o["point"], o["price"]) for m in spread_odds for o in m["outcomes"] if o["name"] == game["home_team"]]
             avg_spread = sum(s[0] for s in home_spreads) / len(home_spreads) if home_spreads else 0
@@ -144,7 +146,6 @@ def fetch_game_predictions(selected_games):
         else:
             spread = "N/A"
 
-        # Over/Under: Average total and odds
         if ou_odds:
             totals = [(o["point"], o["price"]) for m in ou_odds for o in m["outcomes"] if o["name"] == "Over"]
             avg_total = sum(t[0] for t in totals) / len(totals) if totals else 0
@@ -153,21 +154,24 @@ def fetch_game_predictions(selected_games):
         else:
             ou = "N/A"
 
-        # Player Stats Adjustment (Top 3 players per team)
-        home_players = [p for p in players.get_active_players() if p["team"]["full_name"] == game["home_team"]][:3]
-        away_players = [p for p in players.get_active_players() if p["team"]["full_name"] == game["away_team"]][:3]
+        # Player Stats Adjustment using team IDs
+        home_team = next((t for t in all_teams if t["full_name"] == game["home_team"]), None)
+        away_team = next((t for t in all_teams if t["full_name"] == game["away_team"]), None)
         home_pts, away_pts = 0, 0
-        for p in home_players + away_players:
-            stats = playergamelogs.PlayerGameLogs(player_id=p["id"], season_nullable="2024-25").get_data_frames()[0]
-            avg_pts = stats["PTS"].head(5).mean() if not stats.empty else 0
-            if p in home_players:
-                home_pts += avg_pts
-            else:
-                away_pts += avg_pts
         
-        # Adjust confidence based on player performance differential
+        if home_team and away_team:
+            home_players = [p for p in players.get_active_players() if p.get("team_id") == home_team["id"]][:3]
+            away_players = [p for p in players.get_active_players() if p.get("team_id") == away_team["id"]][:3]
+            for p in home_players + away_players:
+                stats = playergamelogs.PlayerGameLogs(player_id=p["id"], season_nullable="2024-25").get_data_frames()[0]
+                avg_pts = stats["PTS"].head(5).mean() if not stats.empty else 0
+                if p in home_players:
+                    home_pts += avg_pts
+                else:
+                    away_pts += avg_pts
+        
         pts_diff = (home_pts - away_pts) / (home_pts + away_pts) if (home_pts + away_pts) > 0 else 0
-        confidence = min(max(ml_confidence + (pts_diff * 20), 50), 95)  # Blend odds and stats
+        confidence = min(max(ml_confidence + (pts_diff * 20), 50), 95)
 
         predictions[game_key] = {
             "ML": ml,
@@ -177,7 +181,6 @@ def fetch_game_predictions(selected_games):
         }
     
     return predictions
-
 @st.cache_data(ttl=3600)
 def fetch_sharp_money_trends(selected_games):
     """Fetch enhanced betting trends using odds movement and player stats."""
