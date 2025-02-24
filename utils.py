@@ -11,12 +11,6 @@ BALL_DONT_LIE_API_URL = "https://api.balldontlie.io/v1/games"
 
 # ✅ Cache Data for Efficiency
 @st.cache_data(ttl=3600)
-import requests
-import streamlit as st
-
-BALL_DONT_LIE_API_URL = "https://api.balldontlie.io/v1/games"
-
-@st.cache_data(ttl=3600)
 def get_nba_games(date):
     """Fetch NBA games from BallDontLie API for a specific date."""
     if isinstance(date, str):
