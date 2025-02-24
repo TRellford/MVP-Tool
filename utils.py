@@ -10,6 +10,8 @@ NBA_ODDS_API_URL = "https://api.the-odds-api.com/v4/sports/basketball_nba/odds"
 BALL_DONT_LIE_API_URL = "https://api.balldontlie.io/v1/games"
 
 # ✅ Cache Data for Efficiency
+API_KEY = "aa93bed3-e51f-48c5-bfad-74d85cee2c72"  # ⬅️ Replace this with your real key
+
 @st.cache_data(ttl=3600)
 def get_nba_games(date):
     """Fetch NBA games from BallDontLie API for a specific date."""
@@ -19,19 +21,18 @@ def get_nba_games(date):
         date_str = date.strftime("%Y-%m-%d")
 
     try:
-        # Retrieve API key and clean formatting issues
-        api_key = st.secrets.get("ball_dont_lie_api_key", "").strip()  # Ensures key is clean
-        if not api_key:
-            st.error("🚨 API Key is missing from Streamlit secrets.")
+        # Ensure the API key is being used correctly
+        if not API_KEY:
+            st.error("🚨 API Key is missing! Hardcode the key in utils.py.")
             return []
 
         url = f"{BALL_DONT_LIE_API_URL}?start_date={date_str}&end_date={date_str}"
-        headers = {"Authorization": f"Bearer {api_key}"}
+        headers = {"Authorization": f"Bearer {API_KEY}"}  # Directly using hardcoded key
 
         response = requests.get(url, headers=headers)
 
         if response.status_code == 401:
-            st.error("❌ Unauthorized (401). Check your API key or upgrade your BallDontLie account.")
+            st.error("❌ Unauthorized (401). Your API key might be incorrect or require a paid plan.")
             return []
 
         if response.status_code != 200:
@@ -53,7 +54,6 @@ def get_nba_games(date):
     except Exception as e:
         st.error(f"❌ Unexpected error fetching games: {e}")
         return []
-
 @st.cache_data(ttl=3600)
 def fetch_best_props(selected_game, min_odds=-250, max_odds=100):
     """Fetch best player props for a selected game within a given odds range."""
