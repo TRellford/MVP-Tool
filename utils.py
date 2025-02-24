@@ -1,17 +1,15 @@
 import requests
-import json
 import streamlit as st
 from nba_api.stats.endpoints import playergamelogs, playercareerstats
-from nba_api.stats.static import players
+from nba_api.stats.static import players, teams
 from datetime import datetime, timedelta
-from balldontlie import BalldontlieAPI
+from balldontlie import BalldontlieAPI  # Kept for potential future use
 
-# ✅ NBA API Base URL
+# API Base URLs
 NBA_ODDS_API_URL = "https://api.the-odds-api.com/v4/sports/basketball_nba/odds"
-api = BalldontlieAPI(api_key="aa93bed3-e51f-48c5-bfad-74d85cee2c72")
+BALL_DONT_LIE_API_URL = "https://api.balldontlie.io/v1"
+API_KEY = "aa93bed3-e51f-48c5-bfad-74d85cee2c72"  # Hardcoded for simplicity; use st.secrets in production
 
-
-# ✅ Cache Data for Efficiency
 def get_nba_games(date):
     """Fetch NBA games from BallDontLie API for a specific date."""
     if isinstance(date, str):
@@ -20,20 +18,15 @@ def get_nba_games(date):
         date_str = date.strftime("%Y-%m-%d")
 
     try:
-        # Ensure the API key is being used correctly
-        if not api:
-            st.error("🚨 API Key is missing! Hardcode the key in utils.py.")
-            return []
+        url = f"{BALL_DONT_LIE_API_URL}/games"
+        headers = {"Authorization": API_KEY}
+        params = {"dates[]": date_str}
 
-        url = f"{BALL_DONT_LIE_API_URL}?start_date={date_str}&end_date={date_str}"
-        headers = {"Authorization": f"Bearer {api}"}  # Directly using hardcoded key
-
-        response = requests.get(url, headers=headers)
+        response = requests.get(url, headers=headers, params=params)
 
         if response.status_code == 401:
-            st.error("❌ Unauthorized (401). Your API key might be incorrect or require a paid plan.")
+            st.error("❌ Unauthorized (401). Check your API key.")
             return []
-
         if response.status_code != 200:
             st.error(f"❌ Error fetching games: {response.status_code}")
             return []
@@ -53,30 +46,45 @@ def get_nba_games(date):
     except Exception as e:
         st.error(f"❌ Unexpected error fetching games: {e}")
         return []
+
 @st.cache_data(ttl=3600)
 def fetch_best_props(selected_game, min_odds=-250, max_odds=100):
     """Fetch best player props for a selected game within a given odds range."""
-    game_id = selected_game.get("game_id")
-    if not game_id:
+    if not selected_game.get("game_id"):
         st.error("🚨 Invalid game selected. No game ID found.")
         return []
 
-    response = requests.get(NBA_ODDS_API_URL, params={"apiKey": st.secrets["odds_api_key"], "regions": "us", "markets": "player_props"})
+    response = requests.get(
+        NBA_ODDS_API_URL,
+        params={
+            "apiKey": st.secrets["odds_api_key"],
+            "regions": "us",
+            "markets": "player_points,player_rebounds,player_assists"
+        }
+    )
     if response.status_code != 200:
         st.error(f"❌ Error fetching player props: {response.status_code}")
         return []
 
     props_data = response.json()
     best_props = []
-    for bookmaker in props_data.get("bookmakers", []):
+    event = next(
+        (e for e in props_data if e['home_team'] == selected_game['home_team'] and e['away_team'] == selected_game['away_team']),
+        None
+    )
+    if not event:
+        return ["No props found for the selected game."]
+
+    for bookmaker in event.get("bookmakers", []):
         for market in bookmaker.get("markets", []):
             for outcome in market.get("outcomes", []):
-                if min_odds <= outcome.get("price", 0) <= max_odds:
+                price = outcome.get("price", 0)
+                if min_odds <= price <= max_odds:
                     best_props.append({
                         "player": outcome["name"],
                         "prop": market["key"].replace("_", " ").title(),
                         "line": outcome.get("point", "N/A"),
-                        "odds": outcome["price"],
+                        "odds": price,
                         "insight": f"{outcome['name']} has strong recent performances in this prop category."
                     })
 
@@ -86,9 +94,9 @@ def fetch_best_props(selected_game, min_odds=-250, max_odds=100):
 def fetch_game_predictions(selected_games):
     """Fetch AI-based game predictions using live data."""
     predictions = {}
-
     for game in selected_games:
-        predictions[game] = {
+        game_key = f"{game['home_team']} vs {game['away_team']}"
+        predictions[game_key] = {
             "ML": "TBD",
             "Spread": "TBD",
             "O/U": "TBD",
@@ -100,19 +108,20 @@ def fetch_game_predictions(selected_games):
 def fetch_sharp_money_trends(selected_games):
     """Fetch betting trends based on sharp money movement."""
     trends = {}
-    
     for game in selected_games:
-        trends[game] = "Sharp money is favoring one side. (Live Data Needed)"
+        game_key = f"{game['home_team']} vs {game['away_team']}"
+        trends[game_key] = "Sharp money is favoring one side. (Live Data Needed)"
     return trends
 
 @st.cache_data(ttl=3600)
 def fetch_sgp_builder(selected_game, sgp_props, multi_game=False):
     """Generate a Same Game Parlay using live data."""
-    return f"SGP Generated for {selected_game} with selected props: {sgp_props}"
+    game_label = f"{selected_game['home_team']} vs {selected_game['away_team']}" if not multi_game else "Multiple Games"
+    return f"SGP Generated for {game_label} with selected props: {sgp_props}"
 
 @st.cache_data(ttl=3600)
-def fetch_player_data(player_name):
-    """Fetch player stats from NBA API."""
+def fetch_player_data(player_name, selected_team=None):
+    """Fetch player stats and H2H stats from NBA API."""
     matching_players = [p for p in players.get_players() if p["full_name"].lower() == player_name.lower()]
     
     if not matching_players:
@@ -126,12 +135,21 @@ def fetch_player_data(player_name):
     last_10 = game_logs.head(10).to_dict(orient="records")
     last_15 = game_logs.head(15).to_dict(orient="records")
 
-    return {
+    player_stats = {
         "Career Stats": career_stats.to_dict(orient="records"),
         "Last 5 Games": last_5,
         "Last 10 Games": last_10,
         "Last 15 Games": last_15
     }
+    
+    h2h_stats = None
+    if selected_team:
+        team_abbr = next((t['abbreviation'] for t in teams.get_teams() if t['full_name'] == selected_team), None)
+        if team_abbr:
+            h2h_games = game_logs[game_logs['MATCHUP'].str.contains(team_abbr)]
+            h2h_stats = h2h_games.to_dict(orient="records") if not h2h_games.empty else None
+
+    return player_stats, h2h_stats
 
 @st.cache_data(ttl=3600)
 def fetch_all_players():
