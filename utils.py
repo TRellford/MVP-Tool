@@ -11,6 +11,12 @@ BALL_DONT_LIE_API_URL = "https://api.balldontlie.io/v1/games"
 
 # ✅ Cache Data for Efficiency
 @st.cache_data(ttl=3600)
+import requests
+import streamlit as st
+
+BALL_DONT_LIE_API_URL = "https://api.balldontlie.io/v1/games"
+
+@st.cache_data(ttl=3600)
 def get_nba_games(date):
     """Fetch NBA games from BallDontLie API for a specific date."""
     if isinstance(date, str):
@@ -19,19 +25,19 @@ def get_nba_games(date):
         date_str = date.strftime("%Y-%m-%d")
 
     try:
-        # Retrieve API key and ensure it's correctly formatted
-        api_key = st.secrets.get("ball_dont_lie_api_key", "").strip()  # Ensures no spaces or missing key
+        # Retrieve API key and clean formatting issues
+        api_key = st.secrets.get("ball_dont_lie_api_key", "").strip()  # Ensures key is clean
         if not api_key:
             st.error("🚨 API Key is missing from Streamlit secrets.")
             return []
 
-        url = f"https://api.balldontlie.io/v1/games?start_date={date_str}&end_date={date_str}"
+        url = f"{BALL_DONT_LIE_API_URL}?start_date={date_str}&end_date={date_str}"
         headers = {"Authorization": f"Bearer {api_key}"}
 
         response = requests.get(url, headers=headers)
-        
+
         if response.status_code == 401:
-            st.error("❌ Unauthorized (401). Your API key might be incorrect or require a paid plan.")
+            st.error("❌ Unauthorized (401). Check your API key or upgrade your BallDontLie account.")
             return []
 
         if response.status_code != 200:
