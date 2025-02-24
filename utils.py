@@ -4,15 +4,14 @@ import streamlit as st
 from nba_api.stats.endpoints import playergamelogs, playercareerstats
 from nba_api.stats.static import players
 from datetime import datetime, timedelta
+from balldontlie import BalldontlieAPI
 
 # ✅ NBA API Base URL
 NBA_ODDS_API_URL = "https://api.the-odds-api.com/v4/sports/basketball_nba/odds"
-BALL_DONT_LIE_API_URL = "https://api.balldontlie.io/v1/games"
+api = BalldontlieAPI(api_key="aa93bed3-e51f-48c5-bfad-74d85cee2c72")
+
 
 # ✅ Cache Data for Efficiency
-API_KEY = "aa93bed3-e51f-48c5-bfad-74d85cee2c72" 
-
-# ⬅️ Replace this with your real key
 def get_nba_games(date):
     """Fetch NBA games from BallDontLie API for a specific date."""
     if isinstance(date, str):
@@ -22,12 +21,12 @@ def get_nba_games(date):
 
     try:
         # Ensure the API key is being used correctly
-        if not API_KEY:
+        if not api:
             st.error("🚨 API Key is missing! Hardcode the key in utils.py.")
             return []
 
         url = f"{BALL_DONT_LIE_API_URL}?start_date={date_str}&end_date={date_str}"
-        headers = {"Authorization": f"Bearer {API_KEY}"}  # Directly using hardcoded key
+        headers = {"Authorization": f"Bearer {api}"}  # Directly using hardcoded key
 
         response = requests.get(url, headers=headers)
 
