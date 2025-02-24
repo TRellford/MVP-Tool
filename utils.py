@@ -8,7 +8,6 @@ from balldontlie import BalldontlieAPI  # Kept for potential future use
 # API Base URLs
 NBA_ODDS_API_URL = "https://api.the-odds-api.com/v4/sports/basketball_nba/odds"
 BALL_DONT_LIE_API_URL = "https://api.balldontlie.io/v1"
-API_KEY = "aa93bed3-e51f-48c5-bfad-74d85cee2c72"  # Hardcoded for simplicity; use st.secrets in production
 
 def get_nba_games(date):
     """Fetch NBA games from BallDontLie API for a specific date."""
@@ -19,13 +18,13 @@ def get_nba_games(date):
 
     try:
         url = f"{BALL_DONT_LIE_API_URL}/games"
-        headers = {"Authorization": API_KEY}
+        headers = {"Authorization": st.secrets["balldontlie_api_key"]}  # Use Streamlit secrets
         params = {"dates[]": date_str}
 
         response = requests.get(url, headers=headers, params=params)
 
         if response.status_code == 401:
-            st.error("❌ Unauthorized (401). Check your API key.")
+            st.error("❌ Unauthorized (401). Check your API key in secrets.toml.")
             return []
         if response.status_code != 200:
             st.error(f"❌ Error fetching games: {response.status_code}")
