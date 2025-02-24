@@ -18,6 +18,7 @@ st.sidebar.title("🔍 Navigation")
 menu_option = st.sidebar.selectbox("Select a Section:", ["Player Search", "Same Game Parlay", "SGP+", "Game Predictions"])
 
 # --- Section 1: Player Search ---
+# --- Section 1: Player Search ---
 if menu_option == "Player Search":
     st.header("🔍 Player Search & Prop Analysis")
 
@@ -38,12 +39,22 @@ if menu_option == "Player Search":
         "Giannis": "Giannis Antetokounmpo"
     }
 
+    # Get player name input
     player_name = st.text_input("Enter Player Name, Last Name, or Nickname", key="player_search")
 
-    if player_stats:
+    # Only run the search if a name is entered
+    if player_name:
+        selected_team = st.selectbox("Select Opponent for H2H Analysis (Optional)", ["None"] + [t["full_name"] for t in teams.get_teams()])
+        selected_team = None if selected_team == "None" else selected_team
+
+        # ✅ Call fetch_player_data() to get player stats
+        player_stats, h2h_stats = fetch_player_data(player_name, selected_team)
+
+        if player_stats:
             st.subheader(f"📈 {player_name} Stats - Last 5, 10, 15 Games")
             st.write(player_stats)
-
+        else:
+            st.error(f"🚨 No stats found for {player_name}. Check name spelling or API availability.")
 # --- Section 2: Same Game Parlay (SGP) ---
 elif menu_option == "Same Game Parlay":
     st.header("🎯 Same Game Parlay (SGP) - One Game Only")
