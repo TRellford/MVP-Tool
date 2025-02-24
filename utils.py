@@ -11,13 +11,12 @@ BALL_DONT_LIE_API_URL = "https://api.balldontlie.io/v1/games"
 
 # ✅ Cache Data for Efficiency
 @st.cache_data(ttl=3600)
-def get_games_by_date(date):
+def get_nba_games(date):
     """Fetch only NBA games for a specific date from BallDontLie API."""
     if isinstance(date, str):
         date_str = date
     else:
         date_str = date.strftime("%Y-%m-%d")
-
     try:
         url = f"{BALL_DONT_LIE_API_URL}?start_date={date_str}&end_date={date_str}"
         headers = {"Authorization": f"Bearer {st.secrets['ball_dont_lie_api_key']}"}  # Secure API key usage
@@ -40,6 +39,7 @@ def get_games_by_date(date):
         return formatted_games
     except Exception as e:
         st.error(f"❌ Unexpected error fetching games for {date_str}: {e}")
+        st.write(f"🔑 API Key: {st.secrets.get('ball_dont_lie_api_key', 'NOT FOUND')}")
         return []
 
 @st.cache_data(ttl=3600)
