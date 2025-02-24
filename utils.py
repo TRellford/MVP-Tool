@@ -41,16 +41,12 @@ def get_nba_games(date):
 
 @st.cache_data(ttl=3600)
 def fetch_best_props(selected_game, min_odds=-250, max_odds=100):
-    """Fetch FanDuel player props for a specific game using the event odds endpoint."""
     if not selected_game.get("game_id"):
         st.error("🚨 Invalid game selected. No game ID found.")
         return []
-    
     game_date = selected_game["date"].split("T")[0] if "date" in selected_game else datetime.today().strftime("%Y-%m-%d")
     home_team = selected_game["home_team"]
     away_team = selected_game["away_team"]
-
-    # Step 1: Find the event ID
     response = requests.get(
         NBA_ODDS_API_URL,
         params={
@@ -64,7 +60,6 @@ def fetch_best_props(selected_game, min_odds=-250, max_odds=100):
     if response.status_code != 200:
         st.error(f"❌ Error fetching events: {response.status_code} - {response.text}")
         return []
-    
     events_data = response.json()
     event = next(
         (e for e in events_data if e['home_team'] == home_team and e['away_team'] == away_team),
@@ -73,26 +68,21 @@ def fetch_best_props(selected_game, min_odds=-250, max_odds=100):
     if not event:
         st.error(f"🚨 No matching event found for {home_team} vs {away_team} on {game_date}.")
         return []
-    
     event_id = event["id"]
-
-    # Step 2: Fetch player props with a single market to test
     event_url = f"{NBA_ODDS_API_URL.rsplit('/', 1)[0]}/events/{event_id}/odds"
-    markets_to_try = ["player_points"]  # Start with one market
+    markets_to_try = ["player_points"]
     best_props = []
-
     response = requests.get(
         event_url,
         params={
             "apiKey": st.secrets["odds_api_key"],
             "regions": "us",
-            "markets": "player_points",  # Single market to test
+            "markets": "player_points",
             "bookmakers": "fanduel"
         }
     )
     if response.status_code != 200:
         st.error(f"❌ Error fetching FanDuel player props: {response.status_code} - {response.text}")
-        # Debug: Fetch available markets with a featured market
         debug_response = requests.get(
             event_url,
             params={
@@ -106,15 +96,12 @@ def fetch_best_props(selected_game, min_odds=-250, max_odds=100):
             debug_data = debug_response.json()
             st.write("Available markets for this event:", debug_data.get("bookmakers", [{}])[0].get("markets", []))
         return []
-    
     props_data = response.json()
     if not props_data.get("bookmakers"):
         return ["No FanDuel props found for this game."]
-    
     fanduel = next((b for b in props_data["bookmakers"] if b["key"] == "fanduel"), None)
     if not fanduel:
         return ["FanDuel odds not available for this game."]
-    
     for market in fanduel.get("markets", []):
         for outcome in market.get("outcomes", []):
             price = outcome.get("price", 0)
@@ -127,8 +114,6 @@ def fetch_best_props(selected_game, min_odds=-250, max_odds=100):
                     "odds": price,
                     "insight": f"{outcome['name']} prop from FanDuel"
                 })
-    
-    # If successful, try additional markets one by one (optional)
     additional_markets = ["player_rebounds", "player_assists", "player_threes"]
     for market in additional_markets:
         response = requests.get(
@@ -156,8 +141,8 @@ def fetch_best_props(selected_game, min_odds=-250, max_odds=100):
                                 "odds": price,
                                 "insight": f"{outcome['name']} prop from FanDuel"
                             })
-    
     return best_props if best_props else ["No suitable FanDuel props found."]
+
 @st.cache_data(ttl=3600)
 def fetch_game_predictions(selected_games):
     response = requests.get(
@@ -258,7 +243,6 @@ def fetch_sharp_money_trends(selected_games):
         h2h_market = fanduel["markets"][0]
         home_odds = next(o["price"] for o in h2h_market["outcomes"] if o["name"] == game["home_team"])
         away_odds = next(o["price"] for o in h2h_market["outcomes"] if o["name"] == game["away_team"])
-        # Simplified trend: High odds shift indicates sharp money (no historical data available)
         home_team = next((t for t in all_teams if t["full_name"] == game["home_team"]), None)
         away_team = next((t for t in all_teams if t["full_name"] == game["away_team"]), None)
         home_pts, away_pts = 0, 0
