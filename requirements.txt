@@ -10,6 +10,7 @@ streamlit
 beautifulsoup4
 selenium
 nba_api
+balldontlie
 
 # Machine Learning & Data Processing
 scikit-learn
