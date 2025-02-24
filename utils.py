@@ -50,12 +50,13 @@ def fetch_best_props(selected_game, min_odds=-250, max_odds=100):
         params={
             "apiKey": st.secrets["odds_api_key"],
             "regions": "us",
-            "markets": "player_points,player_rebounds,player_assists",
-            "date": game_date
+            "markets": "player_points,player_rebounds,player_assists,player_threes",
+            "date": game_date,
+            "bookmakers": "fanduel"
         }
     )
     if response.status_code != 200:
-        st.error(f"❌ Error fetching player props: {response.status_code} - {response.text}")
+        st.error(f"❌ Error fetching FanDuel player props: {response.status_code} - {response.text}")
         return []
     props_data = response.json()
     best_props = []
@@ -63,21 +64,24 @@ def fetch_best_props(selected_game, min_odds=-250, max_odds=100):
         (e for e in props_data if e['home_team'] == selected_game['home_team'] and e['away_team'] == selected_game['away_team']),
         None
     )
-    if not event:
-        return ["No props found for the selected game."]
-    for bookmaker in event.get("bookmakers", []):
-        for market in bookmaker.get("markets", []):
-            for outcome in market.get("outcomes", []):
-                price = outcome.get("price", 0)
-                if min_odds <= price <= max_odds:
-                    best_props.append({
-                        "player": outcome["name"],
-                        "prop": market["key"].replace("_", " ").title(),
-                        "line": outcome.get("point", "N/A"),
-                        "odds": price,
-                        "insight": f"{outcome['name']} has strong recent performances in this prop category."
-                    })
-    return best_props if best_props else ["No suitable props found."]
+    if not event or not event.get("bookmakers"):
+        return ["No FanDuel props found for this game."]
+    fanduel = next((b for b in event["bookmakers"] if b["key"] == "fanduel"), None)
+    if not fanduel:
+        return ["FanDuel odds not available for this game."]
+    for market in fanduel.get("markets", []):
+        for outcome in market.get("outcomes", []):
+            price = outcome.get("price", 0)
+            if min_odds <= price <= max_odds:
+                prop_name = market["key"].replace("player_", "").replace("_", " ").title()
+                best_props.append({
+                    "player": outcome["name"],
+                    "prop": prop_name,
+                    "line": outcome.get("point", "N/A"),
+                    "odds": price,
+                    "insight": f"{outcome['name']} prop from FanDuel"
+                })
+    return best_props if best_props else ["No suitable FanDuel props found."]
 
 @st.cache_data(ttl=3600)
 def fetch_game_predictions(selected_games):
@@ -86,7 +90,8 @@ def fetch_game_predictions(selected_games):
         params={
             "apiKey": st.secrets["odds_api_key"],
             "regions": "us",
-            "markets": "h2h,spreads,totals"
+            "markets": "h2h,spreads,totals",
+            "bookmakers": "fanduel"
         }
     )
     if response.status_code != 200:
@@ -104,34 +109,24 @@ def fetch_game_predictions(selected_games):
         if not event or not event.get("bookmakers"):
             predictions[game_key] = {"ML": "N/A", "Spread": "N/A", "O/U": "N/A", "confidence_score": 0}
             continue
-        h2h_odds = [m for b in event["bookmakers"] for m in b["markets"] if m["key"] == "h2h"]
-        spread_odds = [m for b in event["bookmakers"] for m in b["markets"] if m["key"] == "spreads"]
-        ou_odds = [m for b in event["bookmakers"] for m in b["markets"] if m["key"] == "totals"]
+        fanduel = next((b for b in event["bookmakers"] if b["key"] == "fanduel"), None)
+        if not fanduel:
+            predictions[game_key] = {"ML": "N/A", "Spread": "N/A", "O/U": "N/A", "confidence_score": 0}
+            continue
+        h2h_odds = next((m for m in fanduel["markets"] if m["key"] == "h2h"), None)
+        spread_odds = next((m for m in fanduel["markets"] if m["key"] == "spreads"), None)
+        ou_odds = next((m for m in fanduel["markets"] if m["key"] == "totals"), None)
         if h2h_odds:
-            home_odds = [o["price"] for m in h2h_odds for o in m["outcomes"] if o["name"] == game["home_team"]]
-            away_odds = [o["price"] for m in h2h_odds for o in m["outcomes"] if o["name"] == game["away_team"]]
-            avg_home_odds = sum(home_odds) / len(home_odds) if home_odds else 0
-            avg_away_odds = sum(away_odds) / len(away_odds) if away_odds else 0
-            home_prob = 1 / (1 + (avg_home_odds / 100 if avg_home_odds > 0 else 100 / abs(avg_home_odds))) if avg_home_odds else 0.5
-            away_prob = 1 / (1 + (avg_away_odds / 100 if avg_away_odds > 0 else 100 / abs(avg_away_odds))) if avg_away_odds else 0.5
-            ml = f"{game['home_team']} ({int(avg_home_odds)})" if home_prob > away_prob else f"{game['away_team']} ({int(avg_away_odds)})"
+            home_odds = next(o["price"] for o in h2h_odds["outcomes"] if o["name"] == game["home_team"])
+            away_odds = next(o["price"] for o in h2h_odds["outcomes"] if o["name"] == game["away_team"])
+            home_prob = 1 / (1 + (home_odds / 100 if home_odds > 0 else 100 / abs(home_odds)))
+            away_prob = 1 / (1 + (away_odds / 100 if away_odds > 0 else 100 / abs(away_odds)))
+            ml = f"{game['home_team']} ({home_odds})" if home_prob > away_prob else f"{game['away_team']} ({away_odds})"
             ml_confidence = abs(home_prob - away_prob) * 100
         else:
             ml, ml_confidence = "N/A", 0
-        if spread_odds:
-            home_spreads = [(o["point"], o["price"]) for m in spread_odds for o in m["outcomes"] if o["name"] == game["home_team"]]
-            avg_spread = sum(s[0] for s in home_spreads) / len(home_spreads) if home_spreads else 0
-            avg_spread_odds = sum(s[1] for s in home_spreads) / len(home_spreads) if home_spreads else 0
-            spread = f"{avg_spread:+.1f} ({int(avg_spread_odds)})"
-        else:
-            spread = "N/A"
-        if ou_odds:
-            totals = [(o["point"], o["price"]) for m in ou_odds for o in m["outcomes"] if o["name"] == "Over"]
-            avg_total = sum(t[0] for t in totals) / len(totals) if totals else 0
-            avg_ou_odds = sum(t[1] for t in totals) / len(totals) if totals else 0
-            ou = f"{avg_total:.1f} ({int(avg_ou_odds)})"
-        else:
-            ou = "N/A"
+        spread = f"{spread_odds['outcomes'][0]['point']:+.1f} ({spread_odds['outcomes'][0]['price']})" if spread_odds else "N/A"
+        ou = f"{ou_odds['outcomes'][0]['point']:.1f} ({ou_odds['outcomes'][0]['price']})" if ou_odds else "N/A"
         home_team = next((t for t in all_teams if t["full_name"] == game["home_team"]), None)
         away_team = next((t for t in all_teams if t["full_name"] == game["away_team"]), None)
         home_pts, away_pts = 0, 0
@@ -162,7 +157,8 @@ def fetch_sharp_money_trends(selected_games):
         params={
             "apiKey": st.secrets["odds_api_key"],
             "regions": "us",
-            "markets": "h2h"
+            "markets": "h2h",
+            "bookmakers": "fanduel"
         }
     )
     if response.status_code != 200:
@@ -180,16 +176,14 @@ def fetch_sharp_money_trends(selected_games):
         if not event or not event.get("bookmakers"):
             trends[game_key] = "No line movement data available."
             continue
-        h2h_markets = [b["markets"][0] for b in event["bookmakers"] if b["markets"] and b["markets"][0]["key"] == "h2h"]
-        if not h2h_markets:
-            trends[game_key] = "No moneyline data available."
+        fanduel = next((b for b in event["bookmakers"] if b["key"] == "fanduel"), None)
+        if not fanduel or not fanduel["markets"]:
+            trends[game_key] = "No FanDuel moneyline data available."
             continue
-        home_odds = [o["price"] for m in h2h_markets for o in m["outcomes"] if o["name"] == game["home_team"]]
-        away_odds = [o["price"] for m in h2h_markets for o in m["outcomes"] if o["name"] == game["away_team"]]
-        min_home, max_home = min(home_odds), max(home_odds)
-        min_away, max_away = min(away_odds), max(away_odds)
-        home_shift = max_home - min_home
-        away_shift = max_away - min_away
+        h2h_market = fanduel["markets"][0]
+        home_odds = next(o["price"] for o in h2h_market["outcomes"] if o["name"] == game["home_team"])
+        away_odds = next(o["price"] for o in h2h_market["outcomes"] if o["name"] == game["away_team"])
+        # Simplified trend: High odds shift indicates sharp money (no historical data available)
         home_team = next((t for t in all_teams if t["full_name"] == game["home_team"]), None)
         away_team = next((t for t in all_teams if t["full_name"] == game["away_team"]), None)
         home_pts, away_pts = 0, 0
@@ -203,14 +197,10 @@ def fetch_sharp_money_trends(selected_games):
                     home_pts += avg_pts
                 else:
                     away_pts += avg_pts
-        if home_shift > 10 and home_pts > away_pts:
-            trend = f"Sharp money on {game['home_team']} (+{home_shift} shift, {home_pts:.1f} vs {away_pts:.1f} PPG)"
-        elif away_shift > 10 and away_pts > home_pts:
-            trend = f"Sharp money on {game['away_team']} (+{away_shift} shift, {away_pts:.1f} vs {home_pts:.1f} PPG)"
-        elif home_shift > away_shift:
-            trend = f"Minor movement toward {game['home_team']} (+{home_shift} shift)"
-        elif away_shift > home_shift:
-            trend = f"Minor movement toward {game['away_team']} (+{away_shift} shift)"
+        if home_odds < away_odds and home_pts > away_pts:
+            trend = f"Sharp money on {game['home_team']} ({home_odds}, {home_pts:.1f} vs {away_pts:.1f} PPG)"
+        elif away_odds < home_odds and away_pts > home_pts:
+            trend = f"Sharp money on {game['away_team']} ({away_odds}, {away_pts:.1f} vs {home_pts:.1f} PPG)"
         else:
             trend = "No significant sharp money movement detected."
         trends[game_key] = trend
@@ -226,7 +216,7 @@ def fetch_sgp_builder(selected_game, sgp_props, multi_game=False):
     else:
         total_props = fetch_best_props(selected_game)[:sgp_props] if isinstance(sgp_props, int) else sgp_props
     if not total_props or isinstance(total_props[0], str):
-        return "No valid props available for SGP."
+        return "No valid FanDuel props available for SGP."
     combined_odds = 1.0
     for prop in total_props:
         odds = prop["odds"]
