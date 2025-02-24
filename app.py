@@ -73,7 +73,23 @@ elif menu_option == "Same Game Parlay":
         game_labels = [f"{game['home_team']} vs {game['away_team']}" for game in available_games]
         selected_game_label = st.selectbox("Select a Game:", game_labels, key="sgp_game")
         selected_game = next(g for g in available_games if f"{g['home_team']} vs {g['away_team']}" == selected_game_label)
-        st.write(f"🎯 Selected Game: {selected_game_label}")
+        
+        # Fetch live props for selection
+        props = fetch_best_props(selected_game)
+        if props and not isinstance(props[0], str):  # Check if props are valid
+            prop_options = [f"{p['player']} - {p['prop']} ({p['line']}) @ {p['odds']}" for p in props]
+            selected_props = st.multiselect("Select Props for SGP:", prop_options, key="sgp_props")
+            num_props = len(selected_props)
+            
+            if num_props > 0:
+                selected_prop_data = [p for p in props if f"{p['player']} - {p['prop']} ({p['line']}) @ {p['odds']}" in selected_props]
+                if st.button("Generate SGP"):
+                    sgp_result = fetch_sgp_builder(selected_game, selected_prop_data)
+                    st.write(sgp_result)
+            else:
+                st.warning("⚠️ Select at least one prop to generate an SGP.")
+        else:
+            st.warning("🚨 No props available for this game.")
     else:
         st.warning("🚨 No NBA games found for the selected date.")
 
@@ -94,7 +110,7 @@ elif menu_option == "SGP+":
         st.warning("⚠️ You cannot select more than 12 games.")
     else:
         max_props_per_game = math.floor(24 / len(selected_games))
-        props_per_game = st.slider(f"Choose Props Per Game (Max {max_props_per_game}):", 2, max_props_per_game)
+        props_per_game = st.slider(f"Choose Props Per Game (Max {max_props_per_game}):", 1, max_props_per_game)
 
         total_props = len(selected_games) * props_per_game
         st.write(f"✅ **Total Props Selected: {total_props} (Max: 24)**")
@@ -129,9 +145,13 @@ elif menu_option == "Game Predictions":
                     confidence_score = pred.get("confidence_score", 50)
                     st.subheader(f"📊 {game_label} (Confidence: {confidence_score}%)")
                     st.progress(confidence_score / 100)
-                    st.write(pred)
+                    st.write(f"Moneyline: {pred['ML']}")
+                    st.write(f"Spread: {pred['Spread']}")
+                    st.write(f"O/U: {pred['O/U']}")
 
     st.header("💰 Sharp Money & Line Movement Tracker")
     if len(selected_games) > 0 and st.button("Check Betting Trends"):
         sharp_trends = fetch_sharp_money_trends(selected_games)
-        st.write(sharp_trends)
+        for game_label, trend in sharp_trends.items():
+            st.subheader(f"📉 {game_label}")
+            st.write(trend)
