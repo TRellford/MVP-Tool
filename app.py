@@ -149,7 +149,8 @@ elif menu_option == "Game Predictions":
                 st.write(f"O/U: {pred['O/U']}")
     else:
         st.warning("⚠️ Please select at least one game.")
-    else:
+    
+
         if st.button("Get Game Predictions"):
             predictions = fetch_game_predictions(selected_games)
             if not predictions:
