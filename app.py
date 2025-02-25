@@ -12,36 +12,68 @@ from nba_api.stats.static import teams
 
 st.set_page_config(page_title="NBA Betting AI", layout="wide")
 
-#Sidebar Navigation
-st.sidebar.title("🔍 Navigation")
-
-# Initialize session state for menu_option
 if "menu_option" not in st.session_state:
     st.session_state["menu_option"] = "Player Search"
 
-# Sidebar Navigation Selectbox
+# --- 🔹 Sidebar Navigation ---
+st.sidebar.title("🔍 Navigation")
 new_menu_option = st.sidebar.selectbox(
     "Select a Section:",
     ["Player Search", "Same Game Parlay", "SGP+", "Game Predictions"],
     key="nav_selectbox"
 )
 
-# Use session state variable instead of undefined menu_option
+# --- 🔄 Force Rerun if Menu Option Changes & Clear Previous Data ---
+if new_menu_option != st.session_state["menu_option"]:
+    st.session_state["menu_option"] = new_menu_option
+
+    # ✅ Clear all stored data from the previous section
+    st.session_state.pop("player_search_results", None)
+    st.session_state.pop("sgp_results", None)
+    st.session_state.pop("sgp_plus_results", None)
+    st.session_state.pop("game_predictions", None)
+
+    # ✅ Force a full rerun
+    st.rerun()
+
+# --- 🔹 Menu Selection Logic ---
 menu_option = st.session_state["menu_option"]
 
-# Conditional Logic for Sections
 if menu_option == "Player Search":
-    st.write("🔍 Player Search Section")
-    # Add player search logic here
+    st.write("🔍 **Player Search Section**")
+    player_name = st.text_input("Enter Player Name:")
+    
+    if player_name:
+        player_results = fetch_player_data(player_name, trend_length=10)
+        st.session_state["player_search_results"] = player_results
+        st.json(player_results)
+
 elif menu_option == "Same Game Parlay":
-    st.write("🎯 Same Game Parlay Builder")
-    # Add SGP builder logic here
+    st.write("🎯 **Same Game Parlay Builder**")
+    selected_game = st.selectbox("Choose a game:", get_nba_games())
+    
+    if selected_game:
+        sgp_results = fetch_sgp_builder(selected_game, props=["Points", "Rebounds"])
+        st.session_state["sgp_results"] = sgp_results
+        st.json(sgp_results)
+
 elif menu_option == "SGP+":
-    st.write("📊 Multi-Game SGP+ Builder")
-    # Add SGP+ logic here
+    st.write("📊 **Multi-Game SGP+ Builder**")
+    selected_games = st.multiselect("Choose games:", get_nba_games())
+    
+    if selected_games:
+        sgp_plus_results = fetch_sgp_builder(selected_games, props=["Points", "Assists"], multi_game=True)
+        st.session_state["sgp_plus_results"] = sgp_plus_results
+        st.json(sgp_plus_results)
+
 elif menu_option == "Game Predictions":
-    st.write("📈 AI Game Predictions")
-    # Add game prediction logic here
+    st.write("📈 **AI Game Predictions**")
+    selected_game = st.selectbox("Select Game for Prediction:", get_nba_games())
+
+    if selected_game:
+        game_predictions = fetch_game_predictions(selected_game)
+        st.session_state["game_predictions"] = game_predictions
+        st.json(game_predictions)
 # Player Search
 # Fetch all player names once and store in session state
 if "player_list" not in st.session_state:
