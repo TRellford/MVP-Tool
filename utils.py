@@ -160,3 +160,52 @@ def fetch_sgp_builder(selected_game, num_props=1, min_odds=-450, max_odds=float(
     selected_props = sorted_props[:num_props]
 
     return selected_props
+
+@st.cache_data(ttl=3600)
+def fetch_sharp_money_trends(selected_games):
+    """Fetch sharp money trends & line movement from The Odds API."""
+    API_KEY = os.getenv("ODDS_API_KEY")
+    if not API_KEY:
+        return {}
+
+    response = requests.get(
+        NBA_ODDS_API_URL,
+        params={
+            "apiKey": API_KEY,
+            "regions": "us",
+            "markets": "h2h",
+            "bookmakers": "fanduel"
+        }
+    )
+    
+    if response.status_code != 200:
+        return {}
+
+    odds_data = response.json()
+    trends = {}
+    
+    for game in selected_games:
+        game_key = f"{game['home_team']} vs {game['away_team']}"
+        event = next((e for e in odds_data if e['home_team'] == game['home_team'] and e['away_team'] == game['away_team']), None)
+        
+        if not event:
+            trends[game_key] = "No line movement data available."
+            continue
+
+        fanduel = next((b for b in event.get("bookmakers", []) if b["key"] == "fanduel"), None)
+        if not fanduel or not fanduel.get("markets"):
+            trends[game_key] = "No FanDuel moneyline data available."
+            continue
+
+        h2h_market = fanduel["markets"][0]
+        home_odds = next((o["price"] for o in h2h_market["outcomes"] if o["name"] == game["home_team"]), None)
+        away_odds = next((o["price"] for o in h2h_market["outcomes"] if o["name"] == game["away_team"]), None)
+
+        if home_odds and away_odds:
+            trend = f"🔹 {game['home_team']} Odds: {home_odds}, {game['away_team']} Odds: {away_odds}"
+        else:
+            trend = "No significant sharp money movement detected."
+
+        trends[game_key] = trend
+
+    return trends
