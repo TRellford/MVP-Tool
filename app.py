@@ -1,5 +1,6 @@
 import streamlit as st
 import datetime
+import math
 import pandas as pd
 import matplotlib.pyplot as plt
 from utils import (
@@ -11,6 +12,12 @@ from nba_api.stats.static import teams
 
 st.set_page_config(page_title="NBA Betting AI", layout="wide")
 
+# Sidebar Navigation
+st.sidebar.title("🔍 Navigation")
+menu_option = st.sidebar.selectbox("Select a Section:", ["Player Search", "Same Game Parlay", "SGP+", "Game Predictions"])
+
+# Player Search
+# Fetch all player names once and store in session state
 if "player_list" not in st.session_state:
     st.session_state["player_list"] = fetch_all_players()
 
