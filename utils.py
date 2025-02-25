@@ -68,15 +68,82 @@ def fetch_game_predictions(selected_games):
 def fetch_best_props(selected_game, min_odds=-450, max_odds=float('inf')):
     """Fetch and recommend FanDuel player props with AI-driven analysis."""
     
-    # 🛠 Debugging Step
     print(f"🛠 DEBUG: Fetching props for {selected_game['home_team']} vs {selected_game['away_team']}...")
-
-    all_props = []  # This will store the valid props
-
-    # If no props found, print issue
-    if not all_props:
-        print(f"❌ No props found for {selected_game['home_team']} vs {selected_game['away_team']}.")
     
+    API_KEY = os.getenv("ODDS_API_KEY")
+    if not API_KEY:
+        print("❌ ERROR: Missing API Key for The Odds API.")
+        return []
+    
+    # Fetch event ID for the game
+    game_date = selected_game.get("date", "").split("T")[0]
+    home_team = selected_game["home_team"]
+    away_team = selected_game["away_team"]
+
+    response = requests.get(
+        NBA_ODDS_API_URL,
+        params={
+            "apiKey": API_KEY,
+            "regions": "us",
+            "markets": "player_points,player_rebounds,player_assists,player_threes",
+            "bookmakers": "fanduel"
+        }
+    )
+
+    if response.status_code != 200:
+        print(f"❌ ERROR: Failed to fetch events. Status: {response.status_code}")
+        print(f"🔍 Response: {response.text}")
+        return []
+
+    events_data = response.json()
+
+    print(f"📊 DEBUG: API returned {len(events_data)} events.")
+
+    event = next((e for e in events_data if e['home_team'] == home_team and e['away_team'] == away_team), None)
+
+    if not event:
+        print(f"❌ ERROR: No matching event found for {home_team} vs {away_team} on {game_date}.")
+        return []
+    
+    event_id = event["id"]
+    print(f"✅ DEBUG: Found event ID: {event_id}")
+
+    # Fetch props from the event
+    event_url = f"{NBA_ODDS_API_URL.rsplit('/', 1)[0]}/events/{event_id}/odds"
+    response = requests.get(
+        event_url,
+        params={"apiKey": API_KEY, "regions": "us", "bookmakers": "fanduel"}
+    )
+
+    if response.status_code != 200:
+        print(f"❌ ERROR: Failed to fetch props for event {event_id}. Status: {response.status_code}")
+        print(f"🔍 Response: {response.text}")
+        return []
+
+    props_data = response.json()
+    print(f"📊 DEBUG: API returned {len(props_data)} props.")
+
+    fanduel = next((b for b in props_data.get("bookmakers", []) if b["key"] == "fanduel"), None)
+
+    if not fanduel:
+        print(f"❌ ERROR: No FanDuel props found for {home_team} vs {away_team}.")
+        return []
+
+    # Extracting props
+    all_props = []
+    for market in fanduel.get("markets", []):
+        for outcome in market.get("outcomes", []):
+            price = outcome.get("price", 0)
+            if min_odds <= price <= max_odds:
+                all_props.append({
+                    "player": outcome["name"],
+                    "prop": market["key"].replace("player_", "").replace("_", " ").title(),
+                    "line": outcome.get("point", 0),
+                    "odds": price
+                })
+
+    print(f"✅ DEBUG: Found {len(all_props)} valid props.")
+
     return all_props
 
 def get_nba_games(date):
