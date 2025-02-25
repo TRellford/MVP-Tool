@@ -12,6 +12,7 @@ from nba_api.stats.static import teams
 
 st.set_page_config(page_title="NBA Betting AI", layout="wide")
 
+# --- 🔹 Ensure Session State is Set for Menu Selection ---
 if "menu_option" not in st.session_state:
     st.session_state["menu_option"] = "Player Search"
 
@@ -36,6 +37,10 @@ if new_menu_option != st.session_state["menu_option"]:
     # ✅ Force a full rerun
     st.rerun()
 
+# --- 🔹 Define Today's and Tomorrow's Dates ---
+today = datetime.date.today().strftime("%Y-%m-%d")
+tomorrow = (datetime.date.today() + datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+
 # --- 🔹 Menu Selection Logic ---
 menu_option = st.session_state["menu_option"]
 
@@ -50,8 +55,8 @@ if menu_option == "Player Search":
 
 elif menu_option == "Same Game Parlay":
     st.write("🎯 **Same Game Parlay Builder**")
-    selected_game = st.selectbox("Choose a game:", get_nba_games())
-    
+    selected_game = st.selectbox("Choose a game:", get_nba_games(today))  # ✅ Pass today's date
+
     if selected_game:
         sgp_results = fetch_sgp_builder(selected_game, props=["Points", "Rebounds"])
         st.session_state["sgp_results"] = sgp_results
@@ -59,8 +64,8 @@ elif menu_option == "Same Game Parlay":
 
 elif menu_option == "SGP+":
     st.write("📊 **Multi-Game SGP+ Builder**")
-    selected_games = st.multiselect("Choose games:", get_nba_games())
-    
+    selected_games = st.multiselect("Choose games:", get_nba_games(today))  # ✅ Pass today's date
+
     if selected_games:
         sgp_plus_results = fetch_sgp_builder(selected_games, props=["Points", "Assists"], multi_game=True)
         st.session_state["sgp_plus_results"] = sgp_plus_results
@@ -68,7 +73,7 @@ elif menu_option == "SGP+":
 
 elif menu_option == "Game Predictions":
     st.write("📈 **AI Game Predictions**")
-    selected_game = st.selectbox("Select Game for Prediction:", get_nba_games())
+    selected_game = st.selectbox("Select Game for Prediction:", get_nba_games(today))  # ✅ Pass today's date
 
     if selected_game:
         game_predictions = fetch_game_predictions(selected_game)
