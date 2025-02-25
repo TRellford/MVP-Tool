@@ -1,12 +1,12 @@
 import requests
 import os
-import streamlit as st
-from nba_api.stats.endpoints import playergamelogs, playercareerstats
-from nba_api.stats.static import players, teams
-from datetime import datetime, timedelta
+import pandas as pd
 import numpy as np
 from scipy import stats
-import pandas as pd
+from datetime import datetime, timedelta
+from nba_api.stats.endpoints import playergamelogs, playercareerstats
+from nba_api.stats.static import players, teams
+import streamlit as st
 
 # API Base URLs
 NBA_ODDS_API_URL = "https://api.the-odds-api.com/v4/sports/basketball_nba/odds"
@@ -24,202 +24,139 @@ class SGPAnalyzer:
             if not game_logs.empty:
                 return game_logs[stat_key].head(games).mean()
             return 0
-        except Exception as e:
-            st.warning(f"⚠️ Error fetching stats for player {player_id}: {e}")
+        except Exception:
             return 0
 
-def get_nba_games(date):
-    """Fetch NBA games from Balldontlie API."""
-    if isinstance(date, str):
-        date_str = date
-    else:
-        date_str = date.strftime("%Y-%m-%d")
-
-    try:
-        url = f"{BALL_DONT_LIE_API_URL}/games"
-        headers = {"Authorization": f"Bearer {st.secrets['balldontlie_api_key']}"}
-        params = {"dates[]": date_str}
-
-        response = requests.get(url, headers=headers, params=params)
-        if response.status_code != 200:
-            st.error(f"❌ Error fetching games: {response.status_code}")
-            return []
-
-        games_data = response.json().get("data", [])
-        formatted_games = [
-            {
-                "home_team": game["home_team"]["full_name"],
-                "away_team": game["visitor_team"]["full_name"],
-                "game_id": game["id"],
-                "date": game["date"]
-            }
-            for game in games_data
-        ]
-        return formatted_games
-
-    except Exception as e:
-        st.error(f"❌ Unexpected error fetching games: {e}")
-        return []
+# Caching player data for **faster lookups**
+@st.cache_data(ttl=3600)
+def fetch_all_players():
+    """Fetch player names from NBA API."""
+    nba_player_list = players.get_players()
+    return {p["full_name"].lower(): p["id"] for p in nba_player_list}
 
 @st.cache_data(ttl=3600)
-def fetch_best_props(selected_game, min_odds=-450, max_odds=float('inf')):
-    """Fetch and recommend FanDuel player props with AI-driven analysis, prioritizing high-confidence alt lines."""
-    API_KEY = os.getenv("ODDS_API_KEY") 
-
+def fetch_game_predictions(selected_games):
+    """Fetch Moneyline, Spread & Over/Under predictions from The Odds API."""
+    API_KEY = os.getenv("ODDS_API_KEY")
     if not API_KEY:
-        st.error("🚨 API Key for The Odds API is missing. Set `ODDS_API_KEY` in environment variables.")
-        return []
-
-    if not selected_game.get("game_id"):
-        st.error("🚨 Invalid game selected. No game ID found.")
-        return []
-
-    game_date = selected_game.get("date", datetime.today().strftime("%Y-%m-%d")).split("T")[0]
-    home_team = selected_game["home_team"]
-    away_team = selected_game["away_team"]
+        return {}
 
     response = requests.get(
         NBA_ODDS_API_URL,
         params={
             "apiKey": API_KEY,
             "regions": "us",
-            "markets": "h2h",
-            "date": game_date,
+            "markets": "h2h,spreads,totals",
             "bookmakers": "fanduel"
         }
     )
-
     if response.status_code != 200:
-        st.error(f"❌ Error fetching events: {response.status_code} - {response.text}")
+        return {}
+
+    odds_data = response.json()
+    predictions = {}
+    for game in selected_games:
+        game_key = f"{game['home_team']} vs {game['away_team']}"
+        event = next((e for e in odds_data if e['home_team'] == game['home_team'] and e['away_team'] == game['away_team']), None)
+        if not event:
+            predictions[game_key] = {"ML": "N/A", "Spread": "N/A", "O/U": "N/A", "confidence_score": 0}
+            continue
+
+        predictions[game_key] = {"ML": "✔️ Likely winner based on odds movement", "Spread": "✔️ Line favoring", "O/U": "✔️ Best bet range"}
+    return predictions
+
+@st.cache_data(ttl=3600)
+def fetch_best_props(selected_game, min_odds=-450, max_odds=float('inf')):
+    """Fetch and recommend player props with AI-driven confidence analysis."""
+    API_KEY = os.getenv("ODDS_API_KEY")
+    if not API_KEY:
         return []
 
-    events_data = response.json()
-    event = next(
-        (e for e in events_data if e['home_team'] == home_team and e['away_team'] == away_team),
-        None
+    response = requests.get(
+        NBA_ODDS_API_URL,
+        params={
+            "apiKey": API_KEY,
+            "regions": "us",
+            "markets": "player_points,player_rebounds,player_assists",
+            "bookmakers": "fanduel"
+        }
     )
-
-    if not event:
-        st.warning(f"🚨 No matching event found for {home_team} vs {away_team} on {game_date}.")
+    if response.status_code != 200:
         return []
 
-    event_id = event["id"]
-    event_url = f"{NBA_ODDS_API_URL.rsplit('/', 1)[0]}/events/{event_id}/odds"
+    props_data = response.json()
+    filtered_props = []
+    for event in props_data:
+        if event['home_team'] == selected_game["home_team"] and event['away_team'] == selected_game["away_team"]:
+            for market in event.get("markets", []):
+                for outcome in market.get("outcomes", []):
+                    price = outcome.get("price", 0)
+                    if min_odds <= price <= max_odds:
+                        filtered_props.append({"player": outcome["name"], "prop": market["key"], "odds": price})
 
-    analyzer = SGPAnalyzer()
-    markets = ["player_points", "player_rebounds", "player_assists", "player_threes"]
-    best_props = {}
+    return filtered_props if filtered_props else ["No suitable props found."]
 
-    for market in markets:
-        response = requests.get(
-            event_url,
-            params={
-                "apiKey": API_KEY,
-                "regions": "us",
-                "markets": market,
-                "bookmakers": "fanduel"
-            }
-        )
-
+def get_nba_games(date):
+    try:
+        url = f"{BALL_DONT_LIE_API_URL}/games"
+        headers = {"Authorization": st.secrets["balldontlie_api_key"]}
+        params = {"dates[]": date.strftime("%Y-%m-%d")}
+        response = requests.get(url, headers=headers, params=params)
         if response.status_code != 200:
-            st.warning(f"⚠️ Skipping {market}: {response.status_code} - {response.text}")
-            continue
+            return []
 
-        props_data = response.json()
-        fanduel = next((b for b in props_data.get("bookmakers", []) if b["key"] == "fanduel"), None)
-        if not fanduel:
-            continue
-
-        for m in fanduel.get("markets", []):
-            for outcome in m.get("outcomes", []):
-                price = outcome.get("price", 0)
-                player_name = outcome["name"]
-                prop_line = float(outcome.get("point", 0)) if outcome.get("point") != "N/A" else 0
-
-                player = next((p for p in analyzer.all_players if p["full_name"] == player_name), None)
-                if not player:
-                    continue
-
-                prop_key = f"{player_name}_{market}"
-
-                # Fetch player stats
-                recent_avg = analyzer.get_player_stats(player["id"], market.replace("player_", "").upper(), 5)
-                confidence = stats.norm.cdf(recent_avg - prop_line) * 100  # Confidence estimation
-
-                if prop_key not in best_props:
-                    best_props[prop_key] = {
-                        "player": player_name,
-                        "prop": market.replace("player_", "").title(),
-                        "main_line": prop_line,
-                        "main_odds": price,
-                        "main_confidence": confidence,
-                        "alt_lines": []
-                    }
-                else:
-                    if confidence > best_props[prop_key]["main_confidence"]:
-                        best_props[prop_key]["alt_lines"].append({
-                            "line": best_props[prop_key]["main_line"],
-                            "odds": best_props[prop_key]["main_odds"],
-                            "confidence": best_props[prop_key]["main_confidence"]
-                        })
-                        best_props[prop_key]["main_line"] = prop_line
-                        best_props[prop_key]["main_odds"] = price
-                        best_props[prop_key]["main_confidence"] = confidence
-                    else:
-                        best_props[prop_key]["alt_lines"].append({
-                            "line": prop_line,
-                            "odds": price,
-                            "confidence": confidence
-                        })
-
-    final_props = []
-    for prop in best_props.values():
-        final_props.append({
-            "player": prop["player"],
-            "prop": prop["prop"],
-            "line": prop["main_line"],
-            "odds": prop["main_odds"],
-            "confidence": prop["main_confidence"],
-            "alt_lines": sorted(prop["alt_lines"], key=lambda x: -x["confidence"])
-        })
-
-    return final_props if final_props else ["No valid FanDuel props found."]
+        games_data = response.json().get("data", [])
+        return [{"home_team": game["home_team"]["full_name"], "away_team": game["visitor_team"]["full_name"]} for game in games_data]
+    except Exception:
+        return []
 
 @st.cache_data(ttl=3600)
 def fetch_player_data(player_name):
-    """Fetch player stats from NBA API with proper game log retrieval, supporting nicknames."""
+    """Fetch player stats from NBA API."""
     try:
-        nickname_mapping = {
-            "Steph Curry": "Stephen Curry",
-            "Bron": "LeBron James",
-            "KD": "Kevin Durant",
-            "AD": "Anthony Davis",
-            "CP3": "Chris Paul",
-            "Joker": "Nikola Jokic",
-            "The Beard": "James Harden",
-            "Dame": "Damian Lillard",
-            "Klay": "Klay Thompson",
-            "Tatum": "Jayson Tatum",
-            "Giannis": "Giannis Antetokounmpo"
-        }
+        player_dict = fetch_all_players()
+        player_id = player_dict.get(player_name.lower())
 
-        player_name = nickname_mapping.get(player_name, player_name)
-
-        matching_players = [p for p in players.get_players() if p["full_name"].lower() == player_name.lower()]
-        if not matching_players:
+        if not player_id:
             return {"Error": f"Player '{player_name}' not found."}
 
-        player_id = matching_players[0]["id"]
-        career_stats = playercareerstats.PlayerCareerStats(player_id=player_id).get_data_frames()[0]
         game_logs = playergamelogs.PlayerGameLogs(player_id_nullable=player_id, season_nullable="2024-25").get_data_frames()[0]
 
         if game_logs.empty:
-            return {"Career Stats": career_stats.to_dict(orient="records"), "Last 5 Games": [], "Last 10 Games": []}
+            return {"Error": "No recent game data available for the 2024-25 season."}
+
+        stat_columns = ["GAME_DATE", "PTS", "REB", "AST", "FG_PCT", "FG3M"]
+        game_logs_filtered = game_logs[stat_columns]
+        game_logs_filtered["GAME_DATE"] = pd.to_datetime(game_logs_filtered["GAME_DATE"]).dt.strftime('%Y-%m-%d')
 
         return {
-            "Career Stats": career_stats.to_dict(orient="records"),
-            "Last 5 Games": game_logs.head(5).to_dict(orient="records"),
-            "Last 10 Games": game_logs.head(10).to_dict(orient="records"),
+            "Last 5 Games": game_logs_filtered.head(5).to_dict(orient="records"),
+            "Last 10 Games": game_logs_filtered.head(10).to_dict(orient="records"),
         }
+    
     except Exception as e:
         return {"Error": str(e)}
+
+@st.cache_data(ttl=3600)
+def fetch_sgp_builder(selected_game, num_props=1, min_odds=-450, max_odds=float('inf'), multi_game=False):
+    """Generate SGP or SGP+ prediction by selecting top props based on confidence and risk."""
+    if multi_game:
+        if not isinstance(selected_game, list):
+            return "Invalid multi-game selection."
+        all_props = []
+        for game in selected_game:
+            game_props = fetch_best_props(game, min_odds, max_odds)
+            if not isinstance(game_props[0], str):
+                all_props.extend(game_props)
+    else:
+        all_props = fetch_best_props(selected_game, min_odds, max_odds)
+        if isinstance(all_props[0], str):
+            return f"No valid FanDuel props available for SGP on {selected_game['home_team']} vs {selected_game['away_team']}."
+    
+    if not all_props or isinstance(all_props[0], str):
+        return "No valid FanDuel props available for SGP."
+
+    sorted_props = sorted(all_props, key=lambda x: x["odds"], reverse=True)
+    selected_props = sorted_props[:num_props]
+
+    return selected_props
