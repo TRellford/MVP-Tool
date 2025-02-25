@@ -1,6 +1,5 @@
 import streamlit as st
 import datetime
-import math
 import pandas as pd
 import matplotlib.pyplot as plt
 from utils import (
@@ -28,18 +27,24 @@ new_menu_option = st.sidebar.selectbox(
 if new_menu_option != st.session_state["menu_option"]:
     st.session_state["menu_option"] = new_menu_option
 
-    # ✅ Clear all stored data from the previous section
+    # ✅ Clear previous section data
     st.session_state.pop("player_search_results", None)
     st.session_state.pop("sgp_results", None)
     st.session_state.pop("sgp_plus_results", None)
     st.session_state.pop("game_predictions", None)
 
-    # ✅ Force a full rerun
+    # ✅ Force full rerun
     st.rerun()
 
-# --- 🔹 Define Today's and Tomorrow's Dates ---
+# --- 🔹 Define Dates ---
 today = datetime.date.today().strftime("%Y-%m-%d")
 tomorrow = (datetime.date.today() + datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+
+# --- 🔹 Add Radio Button for Today/Tomorrow Selection ---
+date_option = st.sidebar.radio("Select Game Date:", ["Today", "Tomorrow"])
+
+# Set selected date
+selected_date = today if date_option == "Today" else tomorrow
 
 # --- 🔹 Menu Selection Logic ---
 menu_option = st.session_state["menu_option"]
@@ -55,7 +60,7 @@ if menu_option == "Player Search":
 
 elif menu_option == "Same Game Parlay":
     st.write("🎯 **Same Game Parlay Builder**")
-    selected_game = st.selectbox("Choose a game:", get_nba_games(today))  # ✅ Pass today's date
+    selected_game = st.selectbox("Choose a game:", get_nba_games(selected_date))  # ✅ Fix: Pass selected_date
 
     if selected_game:
         sgp_results = fetch_sgp_builder(selected_game, props=["Points", "Rebounds"])
@@ -64,7 +69,7 @@ elif menu_option == "Same Game Parlay":
 
 elif menu_option == "SGP+":
     st.write("📊 **Multi-Game SGP+ Builder**")
-    selected_games = st.multiselect("Choose games:", get_nba_games(today))  # ✅ Pass today's date
+    selected_games = st.multiselect("Choose games:", get_nba_games(selected_date))  # ✅ Fix: Pass selected_date
 
     if selected_games:
         sgp_plus_results = fetch_sgp_builder(selected_games, props=["Points", "Assists"], multi_game=True)
@@ -73,7 +78,7 @@ elif menu_option == "SGP+":
 
 elif menu_option == "Game Predictions":
     st.write("📈 **AI Game Predictions**")
-    selected_game = st.selectbox("Select Game for Prediction:", get_nba_games(today))  # ✅ Pass today's date
+    selected_game = st.selectbox("Select Game for Prediction:", get_nba_games(selected_date))  # ✅ Fix: Pass selected_date
 
     if selected_game:
         game_predictions = fetch_game_predictions(selected_game)
