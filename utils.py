@@ -184,3 +184,42 @@ def fetch_best_props(selected_game, min_odds=-450, max_odds=float('inf')):
         })
 
     return final_props if final_props else ["No valid FanDuel props found."]
+
+@st.cache_data(ttl=3600)
+def fetch_player_data(player_name):
+    """Fetch player stats from NBA API with proper game log retrieval, supporting nicknames."""
+    try:
+        nickname_mapping = {
+            "Steph Curry": "Stephen Curry",
+            "Bron": "LeBron James",
+            "KD": "Kevin Durant",
+            "AD": "Anthony Davis",
+            "CP3": "Chris Paul",
+            "Joker": "Nikola Jokic",
+            "The Beard": "James Harden",
+            "Dame": "Damian Lillard",
+            "Klay": "Klay Thompson",
+            "Tatum": "Jayson Tatum",
+            "Giannis": "Giannis Antetokounmpo"
+        }
+
+        player_name = nickname_mapping.get(player_name, player_name)
+
+        matching_players = [p for p in players.get_players() if p["full_name"].lower() == player_name.lower()]
+        if not matching_players:
+            return {"Error": f"Player '{player_name}' not found."}
+
+        player_id = matching_players[0]["id"]
+        career_stats = playercareerstats.PlayerCareerStats(player_id=player_id).get_data_frames()[0]
+        game_logs = playergamelogs.PlayerGameLogs(player_id_nullable=player_id, season_nullable="2024-25").get_data_frames()[0]
+
+        if game_logs.empty:
+            return {"Career Stats": career_stats.to_dict(orient="records"), "Last 5 Games": [], "Last 10 Games": []}
+
+        return {
+            "Career Stats": career_stats.to_dict(orient="records"),
+            "Last 5 Games": game_logs.head(5).to_dict(orient="records"),
+            "Last 10 Games": game_logs.head(10).to_dict(orient="records"),
+        }
+    except Exception as e:
+        return {"Error": str(e)}
