@@ -29,7 +29,7 @@ new_menu_option = st.sidebar.selectbox(
 # Update session state if the menu option changes
 if new_menu_option != st.session_state["menu_option"]:
     st.session_state["menu_option"] = new_menu_option
-    st.experimental_rerun()  # 🔄 Force rerun Streamlit to apply section changes
+    st.rerun()  # 🔄 Force rerun Streamlit to apply section changes
 
 # Use session state variable instead of undefined menu_option
 menu_option = st.session_state["menu_option"]
