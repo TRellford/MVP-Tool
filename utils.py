@@ -543,4 +543,29 @@ def fetch_player_data(player_name):
 
 @st.cache_data(ttl=3600)
 def fetch_all_players():
-    return [p["full_name"] for p in players.get_active_players()]
+    """Fetch player names from NBA API & Balldontlie API if missing."""
+    
+    # 🏀 1️⃣ Get players from NBA API
+    nba_player_list = players.get_players()
+    nba_players = {p["full_name"].lower(): p["id"] for p in nba_player_list}
+
+    return nba_players  # If NBA API returns the player, no need to check Balldontlie
+
+def fetch_player_id(player_name):
+    """Fetch player ID from NBA API, then Balldontlie API if missing."""
+    player_name = player_name.lower()
+    player_dict = fetch_all_players()
+    
+    # ✅ 1️⃣ Check NBA API First
+    if player_name in player_dict:
+        return player_dict[player_name]  # Return NBA API player ID
+
+    # ❌ 2️⃣ If Not Found, Check Balldontlie API
+    response = requests.get(BALLEDONTLIE_URL + player_name)
+
+    if response.status_code == 200:
+        data = response.json()
+        if data["data"]:  # If player is found
+            return data["data"][0]["id"]  # Return Balldontlie ID
+
+    return None  # ❌ Player Not Found in Either API
