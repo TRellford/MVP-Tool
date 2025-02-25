@@ -12,7 +12,7 @@ from nba_api.stats.static import teams
 
 st.set_page_config(page_title="NBA Betting AI", layout="wide")
 
- Sidebar Navigation
+#Sidebar Navigation
 st.sidebar.title("🔍 Navigation")
 
 # Initialize session state for menu_option
