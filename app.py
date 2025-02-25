@@ -57,6 +57,7 @@ if menu_option == "Player Search":
             st.error(f"🚨 No stats found for {player_name}. Check name spelling or API availability.")
 
 # Same Game Parlay
+# Same Game Parlay
 elif menu_option == "Same Game Parlay":
     st.header("🎯 Same Game Parlay (SGP) - One Game Only")
 
@@ -76,21 +77,27 @@ elif menu_option == "Same Game Parlay":
         
         num_props = st.slider("Number of Props (1-8):", 1, 8, 1, key="sgp_num_props")
         
-        risk_levels = {
-            "Very Safe :large_blue_circle:": {"risk": "Very Safe", "color": "blue", "min_odds": -450, "max_odds": -300},
-            "Safe :large_green_circle:": {"risk": "Safe", "color": "green", "min_odds": -299, "max_odds": -200},
-            "Moderate Risk :large_yellow_circle:": {"risk": "Moderate Risk", "color": "yellow", "min_odds": -199, "max_odds": 100},
-            "High Risk :large_orange_circle:": {"risk": "High Risk", "color": "orange", "min_odds": 101, "max_odds": 250},
-            "Very High Risk :large_red_circle:": {"risk": "Very High Risk", "color": "red", "min_odds": 251, "max_odds": float('inf')}
-        }
-        risk_index = st.selectbox("Select Risk Level:", list(risk_levels.keys()), key="sgp_risk_level")
+        # Define risk levels with odds ranges and colors
+        risk_levels = [
+            {"risk": "Very Safe", "color": ":large_blue_circle:", "min_odds": -450, "max_odds": -300},
+            {"risk": "Safe", "color": ":large_green_circle:", "min_odds": -299, "max_odds": -200},
+            {"risk": "Moderate Risk", "color": ":large_yellow_circle:", "min_odds": -199, "max_odds": 100},
+            {"risk": "High Risk", "color": ":large_orange_circle:", "min_odds": 101, "max_odds": 250},
+            {"risk": "Very High Risk", "color": ":large_red_circle:", "min_odds": 251, "max_odds": float('inf')}
+        ]
         
-        # Directly access the dictionary
-        risk_data = risk_levels.get(risk_index, risk_levels["Very Safe :large_blue_circle:"])
-        risk_level = risk_data["risk"]
-        color = risk_data["color"]
-        min_odds = risk_data["min_odds"]
-        max_odds = risk_data["max_odds"]
+        # Format options for display: "Risk Level (min_odds to max_odds)" with colored circle
+        risk_options = [
+            f"{level['risk']} ({level['min_odds']} to {level['max_odds'] if level['max_odds'] != float('inf') else '+∞'}) {level['color']}"
+            for level in risk_levels
+        ]
+        risk_index = st.selectbox("Select Risk Level:", risk_options, key="sgp_risk_level")
+        
+        # Extract the selected risk data
+        selected_risk = next(level for level in risk_levels if f"{level['risk']} ({level['min_odds']} to {level['max_odds'] if level['max_odds'] != float('inf') else '+∞'}) {level['color']}" == risk_index)
+        risk_level = selected_risk["risk"]
+        min_odds = selected_risk["min_odds"]
+        max_odds = selected_risk["max_odds"]
         
         if st.button("Generate SGP Prediction"):
             sgp_result = fetch_sgp_builder(selected_game, num_props=num_props, min_odds=min_odds, max_odds=max_odds)
