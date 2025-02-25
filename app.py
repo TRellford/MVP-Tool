@@ -74,29 +74,29 @@ elif menu_option == "Same Game Parlay":
         selected_game_label = st.selectbox("Select a Game:", game_labels, key="sgp_game")
         selected_game = next(g for g in available_games if f"{g['home_team']} vs {g['away_team']}" == selected_game_label)
         
-        # Number of props selection
         num_props = st.slider("Number of Props (1-8):", 1, 8, 1, key="sgp_num_props")
         
-        # Risk level selection with colors
-        risk_levels = [
-            ("Very Safe", "blue", (-450, -300)),
-            ("Safe", "green", (-299, -200)),
-            ("Moderate Risk", "yellow", (-199, 100)),
-            ("High Risk", "orange", (101, 250)),
-            ("Very High Risk", "red", (251, float('inf')))
-        ]
-        risk_options = [f"{level} :large_{color}_circle:" for level, color, _ in risk_levels]
-        risk_index = st.selectbox("Select Risk Level:", risk_options, key="sgp_risk_level")
-        selected_risk = next((r for r, c, _ in risk_levels if f"{r} :large_{c}_circle:" == risk_index), risk_levels[0])
-        risk_level, color, (min_odds, max_odds) = selected_risk
+        risk_levels = {
+            "Very Safe :large_blue_circle:": {"risk": "Very Safe", "color": "blue", "min_odds": -450, "max_odds": -300},
+            "Safe :large_green_circle:": {"risk": "Safe", "color": "green", "min_odds": -299, "max_odds": -200},
+            "Moderate Risk :large_yellow_circle:": {"risk": "Moderate Risk", "color": "yellow", "min_odds": -199, "max_odds": 100},
+            "High Risk :large_orange_circle:": {"risk": "High Risk", "color": "orange", "min_odds": 101, "max_odds": 250},
+            "Very High Risk :large_red_circle:": {"risk": "Very High Risk", "color": "red", "min_odds": 251, "max_odds": float('inf')}
+        }
+        risk_index = st.selectbox("Select Risk Level:", list(risk_levels.keys()), key="sgp_risk_level")
+        
+        # Directly access the dictionary
+        risk_data = risk_levels.get(risk_index, risk_levels["Very Safe :large_blue_circle:"])
+        risk_level = risk_data["risk"]
+        color = risk_data["color"]
+        min_odds = risk_data["min_odds"]
+        max_odds = risk_data["max_odds"]
         
         if st.button("Generate SGP Prediction"):
-            # Pass game, number of props, and risk range to fetch_sgp_builder
             sgp_result = fetch_sgp_builder(selected_game, num_props=num_props, min_odds=min_odds, max_odds=max_odds)
             st.write(sgp_result)
     else:
         st.warning("🚨 No NBA games found for the selected date.")
-
 # SGP+
 elif menu_option == "SGP+":
     st.header("🔥 Multi-Game Parlay (SGP+) - Select 2 to 12 Games")
