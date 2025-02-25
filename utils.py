@@ -65,36 +65,19 @@ def fetch_game_predictions(selected_games):
         predictions[game_key] = {"ML": "✔️ Likely winner based on odds movement", "Spread": "✔️ Line favoring", "O/U": "✔️ Best bet range"}
     return predictions
 
-@st.cache_data(ttl=3600)
 def fetch_best_props(selected_game, min_odds=-450, max_odds=float('inf')):
-    """Fetch and recommend player props with AI-driven confidence analysis."""
-    API_KEY = os.getenv("ODDS_API_KEY")
-    if not API_KEY:
-        return []
+    """Fetch and recommend FanDuel player props with AI-driven analysis."""
+    
+    # 🛠 Debugging Step
+    print(f"🛠 DEBUG: Fetching props for {selected_game['home_team']} vs {selected_game['away_team']}...")
 
-    response = requests.get(
-        NBA_ODDS_API_URL,
-        params={
-            "apiKey": API_KEY,
-            "regions": "us",
-            "markets": "player_points,player_rebounds,player_assists",
-            "bookmakers": "fanduel"
-        }
-    )
-    if response.status_code != 200:
-        return []
+    all_props = []  # This will store the valid props
 
-    props_data = response.json()
-    filtered_props = []
-    for event in props_data:
-        if event['home_team'] == selected_game["home_team"] and event['away_team'] == selected_game["away_team"]:
-            for market in event.get("markets", []):
-                for outcome in market.get("outcomes", []):
-                    price = outcome.get("price", 0)
-                    if min_odds <= price <= max_odds:
-                        filtered_props.append({"player": outcome["name"], "prop": market["key"], "odds": price})
-
-    return filtered_props if filtered_props else ["No suitable props found."]
+    # If no props found, print issue
+    if not all_props:
+        print(f"❌ No props found for {selected_game['home_team']} vs {selected_game['away_team']}.")
+    
+    return all_props
 
 def get_nba_games(date):
     try:
@@ -146,20 +129,31 @@ def fetch_sgp_builder(selected_game, num_props=1, min_odds=-450, max_odds=float(
         all_props = []
         for game in selected_game:
             game_props = fetch_best_props(game, min_odds, max_odds)
-            if not isinstance(game_props[0], str):
+            if isinstance(game_props, list) and game_props:  # Ensure it's a list and not empty
                 all_props.extend(game_props)
     else:
         all_props = fetch_best_props(selected_game, min_odds, max_odds)
-        if isinstance(all_props[0], str):
-            return f"No valid FanDuel props available for SGP on {selected_game['home_team']} vs {selected_game['away_team']}."
     
-    if not all_props or isinstance(all_props[0], str):
-        return "No valid FanDuel props available for SGP."
+    # ✅ NEW FIX: Handle Empty Props List
+    if not all_props:
+        return f"🚨 No valid FanDuel props available for SGP on {selected_game['home_team']} vs {selected_game['away_team']}."
 
-    sorted_props = sorted(all_props, key=lambda x: x["odds"], reverse=True)
+    # Sort and filter props based on confidence
+    sorted_props = sorted(all_props, key=lambda x: x["confidence"], reverse=True)
     selected_props = sorted_props[:num_props]
 
-    return selected_props
+    # Compute combined odds
+    combined_odds = 1.0
+    avg_confidence = sum(p["confidence"] for p in selected_props) / len(selected_props)
+
+    for prop in selected_props:
+        odds = prop["odds"]
+        decimal_odds = (odds / 100 + 1) if odds > 0 else (1 + 100 / abs(odds))
+        combined_odds *= decimal_odds
+    
+    american_odds = int((combined_odds - 1) * 100) if combined_odds > 2 else int(-100 / (combined_odds - 1))
+    
+    return f"SGP Prediction:\nTotal Props: {len(selected_props)}\nCombined Odds: {american_odds}\nConfidence: {avg_confidence:.0f}%"
 
 @st.cache_data(ttl=3600)
 def fetch_sharp_money_trends(selected_games):
