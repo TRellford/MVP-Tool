@@ -12,21 +12,41 @@ from nba_api.stats.static import teams
 
 st.set_page_config(page_title="NBA Betting AI", layout="wide")
 
+ Sidebar Navigation
+st.sidebar.title("🔍 Navigation")
+
+# Initialize session state for menu_option
 if "menu_option" not in st.session_state:
     st.session_state["menu_option"] = "Player Search"
 
-# Sidebar Navigation
-st.sidebar.title("🔍 Navigation")
+# Sidebar Navigation Selectbox
 new_menu_option = st.sidebar.selectbox(
     "Select a Section:",
     ["Player Search", "Same Game Parlay", "SGP+", "Game Predictions"],
     key="nav_selectbox"
 )
 
-# Force rerun if menu_option changes
+# Update session state if the menu option changes
 if new_menu_option != st.session_state["menu_option"]:
     st.session_state["menu_option"] = new_menu_option
-    st.rerun()  # Explicitly rerun the app to reflect the new section
+    st.experimental_rerun()  # 🔄 Force rerun Streamlit to apply section changes
+
+# Use session state variable instead of undefined menu_option
+menu_option = st.session_state["menu_option"]
+
+# Conditional Logic for Sections
+if menu_option == "Player Search":
+    st.write("🔍 Player Search Section")
+    # Add player search logic here
+elif menu_option == "Same Game Parlay":
+    st.write("🎯 Same Game Parlay Builder")
+    # Add SGP builder logic here
+elif menu_option == "SGP+":
+    st.write("📊 Multi-Game SGP+ Builder")
+    # Add SGP+ logic here
+elif menu_option == "Game Predictions":
+    st.write("📈 AI Game Predictions")
+    # Add game prediction logic here
 # Player Search
 # Fetch all player names once and store in session state
 if "player_list" not in st.session_state:
