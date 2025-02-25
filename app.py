@@ -12,6 +12,10 @@ from nba_api.stats.static import teams
 
 st.set_page_config(page_title="NBA Betting AI", layout="wide")
 
+if "menu_option" not in st.session_state:
+    st.session_state["menu_option"] = "Player Search"
+
+# Sidebar Navigation
 st.sidebar.title("🔍 Navigation")
 new_menu_option = st.sidebar.selectbox(
     "Select a Section:",
@@ -20,10 +24,9 @@ new_menu_option = st.sidebar.selectbox(
 )
 
 # Force rerun if menu_option changes
-if new_menu_option != st.session_state.menu_option:
-    st.session_state.menu_option = new_menu_option
+if new_menu_option != st.session_state["menu_option"]:
+    st.session_state["menu_option"] = new_menu_option
     st.rerun()  # Explicitly rerun the app to reflect the new section
-
 # Player Search
 # Fetch all player names once and store in session state
 if "player_list" not in st.session_state:
