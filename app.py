@@ -1,6 +1,8 @@
 import streamlit as st
 import datetime
 import math
+import pandas as pd
+import matplotlib.pyplot as plt
 from utils import (
     fetch_player_data, fetch_best_props,
     fetch_game_predictions, fetch_sgp_builder, fetch_sharp_money_trends,
@@ -15,48 +17,72 @@ st.sidebar.title("🔍 Navigation")
 menu_option = st.sidebar.selectbox("Select a Section:", ["Player Search", "Same Game Parlay", "SGP+", "Game Predictions"])
 
 # Player Search
-if menu_option == "Player Search":
-    st.header("🔍 Player Search & Prop Analysis")
+# Fetch all player names once and store in session state
+if "player_list" not in st.session_state:
+    st.session_state["player_list"] = fetch_all_players()
 
-    all_players = fetch_all_players()
-    last_name_mapping = {p.split()[-1].lower(): p for p in all_players}
-    nickname_mapping = {
-        "steph curry": "Stephen Curry",
-        "bron": "LeBron James",
-        "kd": "Kevin Durant",
-        "ad": "Anthony Davis",
-        "cp3": "Chris Paul",
-        "joker": "Nikola Jokic",
-        "the beard": "James Harden",
-        "dame": "Damian Lillard",
-        "klay": "Klay Thompson",
-        "tatum": "Jayson Tatum",
-        "giannis": "Giannis Antetokounmpo"
-    }
+# Function to filter players based on input
+def filter_players(search_input):
+    if not search_input:
+        return []
+    return [name for name in st.session_state["player_list"] if search_input.lower() in name.lower()]
 
-    player_name = st.text_input("Enter Player Name, Last Name, or Nickname", key="player_search")
-    if player_name:
-        player_name_lower = player_name.lower()
-        if player_name_lower in nickname_mapping:
-            player_name = nickname_mapping[player_name_lower]
-        elif player_name_lower in last_name_mapping:
-            player_name = last_name_mapping[player_name_lower]
+# User types name, and we dynamically update suggestions
+search_input = st.text_input("Search for a Player:", "")
+filtered_players = filter_players(search_input)
 
-        selected_team = st.selectbox("Select Opponent for H2H Analysis (Optional)", ["None"] + [t["full_name"] for t in teams.get_teams()])
-        selected_team = None if selected_team == "None" else selected_team
+# If matches are found, let the user select from them
+if filtered_players:
+    player_name = st.selectbox("Select a Player:", filtered_players)
+else:
+    player_name = None
 
-        player_stats, h2h_stats = fetch_player_data(player_name, selected_team)
+# Search button
+if st.button("Search") and player_name:
+    with st.spinner("Fetching player data..."):
+        player_data = fetch_player_data(player_name)
+        st.session_state["player_data"] = player_data  # Store in session state
 
-        if player_stats:
-            st.subheader(f"📈 {player_name} Stats - Last 5, 10, 15 Games")
-            st.write(player_stats)
-            if h2h_stats:
-                st.subheader(f"🤼 H2H Stats vs {selected_team}")
-                st.write(h2h_stats)
+# Retrieve data from session state (if available)
+if "player_data" in st.session_state:
+    player_data = st.session_state["player_data"]
+
+    if "Error" in player_data:
+        st.error(player_data["Error"])
+    else:
+        # Radio button for selecting the number of games to display
+        selected_games = st.radio("Select Number of Games to Display:", ["Last 5 Games", "Last 10 Games"], index=0)
+
+        # Display selected game logs
+        game_logs = player_data.get(selected_games, [])
+
+        if not game_logs:
+            st.warning(f"No game data available for {selected_games}.")
         else:
-            st.error(f"🚨 No stats found for {player_name}. Check name spelling or API availability.")
+            # Convert to DataFrame and remove the first column
+            df = pd.DataFrame(game_logs)[["GAME_DATE", "PTS", "REB", "AST", "FG_PCT", "FG3M"]]
 
-# Same Game Parlay
+            # Ensure numerical formatting
+            df["FG_PCT"] = df["FG_PCT"].round(2)  # FG% to 2 decimal places
+
+            # Set index starting at 1 instead of 0
+            df.index = range(1, len(df) + 1)
+
+            # Display stats table
+            st.subheader(f"{selected_games} Stats")
+            st.dataframe(df)
+
+            # Plot the stats (excluding "Minutes")
+            st.subheader(f"{selected_games} Performance Graph")
+            fig, ax = plt.subplots(figsize=(10, 5))
+            df.set_index("GAME_DATE")[["PTS", "REB", "AST", "FG_PCT", "FG3M"]].plot(kind='bar', ax=ax)
+            ax.set_title(f"{player_name} - {selected_games}")
+            ax.set_xlabel("Game Date")
+            ax.set_ylabel("Stats")
+            ax.legend(loc="upper right")
+            plt.xticks(rotation=45)
+            st.pyplot(fig)
+            
 # Same Game Parlay
 elif menu_option == "Same Game Parlay":
     st.header("🎯 Same Game Parlay (SGP) - One Game Only")
