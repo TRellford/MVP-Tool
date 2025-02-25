@@ -77,24 +77,25 @@ elif menu_option == "Same Game Parlay":
         
         num_props = st.slider("Number of Props (1-8):", 1, 8, 1, key="sgp_num_props")
         
-        # Define risk levels with odds ranges and colors
+        # Define risk levels with odds ranges and Unicode emojis
         risk_levels = [
-            {"risk": "Very Safe", "color": ":large_blue_circle:", "min_odds": -450, "max_odds": -300},
-            {"risk": "Safe", "color": ":large_green_circle:", "min_odds": -299, "max_odds": -200},
-            {"risk": "Moderate Risk", "color": ":large_yellow_circle:", "min_odds": -199, "max_odds": 100},
-            {"risk": "High Risk", "color": ":large_orange_circle:", "min_odds": 101, "max_odds": 250},
-            {"risk": "Very High Risk", "color": ":large_red_circle:", "min_odds": 251, "max_odds": float('inf')}
+            {"risk": "Very Safe", "emoji": "🔵", "min_odds": -450, "max_odds": -300},
+            {"risk": "Safe", "emoji": "🟢", "min_odds": -299, "max_odds": -200},
+            {"risk": "Moderate Risk", "emoji": "🟡", "min_odds": -199, "max_odds": 100},
+            {"risk": "High Risk", "emoji": "🟠", "min_odds": 101, "max_odds": 250},
+            {"risk": "Very High Risk", "emoji": "🔴", "min_odds": 251, "max_odds": float('inf')}
         ]
         
-        # Format options for display: "Risk Level (min_odds to max_odds)" with colored circle
+        # Format options to match your exact specification
         risk_options = [
-            f"{level['risk']} ({level['min_odds']} to {level['max_odds'] if level['max_odds'] != float('inf') else '+∞'}) {level['color']}"
+            f"{level['risk']} ({level['min_odds']} to {'+' + str(level['max_odds']) if level['max_odds'] > 0 and level['max_odds'] != float('inf') else str(level['max_odds']) if level['max_odds'] != float('inf') else '+∞'}) {level['emoji']}"
             for level in risk_levels
         ]
-        risk_index = st.selectbox("Select Risk Level:", risk_options, key="sgp_risk_level")
+        st.write("Select a risk level to filter each prop’s odds:")
+        risk_index = st.selectbox("Risk Level (Odds Range for Each Prop):", risk_options, key="sgp_risk_level")
         
         # Extract the selected risk data
-        selected_risk = next(level for level in risk_levels if f"{level['risk']} ({level['min_odds']} to {level['max_odds'] if level['max_odds'] != float('inf') else '+∞'}) {level['color']}" == risk_index)
+        selected_risk = next(level for level in risk_levels if f"{level['risk']} ({level['min_odds']} to {'+' + str(level['max_odds']) if level['max_odds'] > 0 and level['max_odds'] != float('inf') else str(level['max_odds']) if level['max_odds'] != float('inf') else '+∞'}) {level['emoji']}" == risk_index)
         risk_level = selected_risk["risk"]
         min_odds = selected_risk["min_odds"]
         max_odds = selected_risk["max_odds"]
