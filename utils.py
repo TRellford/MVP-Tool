@@ -69,13 +69,12 @@ def fetch_best_props(selected_game, min_odds=-450, max_odds=float('inf')):
     """Fetch and recommend FanDuel player props with AI-driven analysis."""
     
     print(f"🛠 DEBUG: Fetching props for {selected_game['home_team']} vs {selected_game['away_team']}...")
-    
+
     API_KEY = os.getenv("ODDS_API_KEY")
     if not API_KEY:
         print("❌ ERROR: Missing API Key for The Odds API.")
         return []
     
-    # Fetch event ID for the game
     game_date = selected_game.get("date", "").split("T")[0]
     home_team = selected_game["home_team"]
     away_team = selected_game["away_team"]
@@ -97,14 +96,16 @@ def fetch_best_props(selected_game, min_odds=-450, max_odds=float('inf')):
 
     events_data = response.json()
 
-    print(f"📊 DEBUG: API returned {len(events_data)} events.")
+    # ✅ Print the first event to check how team names are formatted
+    print(f"📊 DEBUG: API returned {len(events_data)} events. Sample: {events_data[:1]}")
 
-    event = next((e for e in events_data if e['home_team'] == home_team and e['away_team'] == away_team), None)
+    # 🔎 Check if The Odds API is listing teams differently
+    event = next((e for e in events_data if e['home_team'].lower() in home_team.lower() and e['away_team'].lower() in away_team.lower()), None)
 
     if not event:
-        print(f"❌ ERROR: No matching event found for {home_team} vs {away_team} on {game_date}.")
+        print(f"❌ ERROR: No matching event found for {home_team} vs {away_team}.")
         return []
-    
+
     event_id = event["id"]
     print(f"✅ DEBUG: Found event ID: {event_id}")
 
@@ -121,7 +122,9 @@ def fetch_best_props(selected_game, min_odds=-450, max_odds=float('inf')):
         return []
 
     props_data = response.json()
-    print(f"📊 DEBUG: API returned {len(props_data)} props.")
+
+    # ✅ Print out the full structure to check if it's formatted differently
+    print(f"📊 DEBUG: Raw Props Data: {props_data}")
 
     fanduel = next((b for b in props_data.get("bookmakers", []) if b["key"] == "fanduel"), None)
 
@@ -129,7 +132,6 @@ def fetch_best_props(selected_game, min_odds=-450, max_odds=float('inf')):
         print(f"❌ ERROR: No FanDuel props found for {home_team} vs {away_team}.")
         return []
 
-    # Extracting props
     all_props = []
     for market in fanduel.get("markets", []):
         for outcome in market.get("outcomes", []):
